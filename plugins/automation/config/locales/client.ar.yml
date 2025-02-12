@@ -6,18 +6,23 @@
 
 ar:
   js:
+    admin:
+      logs:
+        staff_actions:
+          actions:
+            delete_automation: حذف الأتمتة
     discourse_automation:
       title: الأتمتة
-      create: إنشاء
-      update: تحديث
+      back: الرجوع
+      edit: تعديل
       select_script: حدِّد برنامجًا نصيًا
       select_trigger: حدِّد مشغلًا
       confirm_automation_reset: سيؤدي هذا الإجراء إلى إعادة تعيين البرنامج النصي وتشغيل الخيارات، وسيتم حفظ الحالة الجديدة، هل تريد المتابعة؟
       confirm_automation_trigger: سيؤدي هذا الإجراء إلى تشغيل الأتمتة، هل تريد المتابعة؟
-      no_automation_yet: لم تُنشئ أي أتمتة حتى الآن.
+      filter_placeholder: التصفية حسب الاسم أو الوصف...
       edit_automation:
         trigger_section:
-          forced: يتم فرض هذا المشغِّل بواسطة البرنامج النصي.
+          forced: يتم فرض هذا المشغِّل بواسطة برنامج نصي.
           next_pending_automation: "سيتم تشغيل الأتمتة التالية في: %{date}"
           trigger_now: "التشغيل الآن"
           title: متى/ماذا...
@@ -29,12 +34,12 @@ ar:
         key_value:
           label_without_count: "التهيئة"
           label_with_count:
-            zero: "تعديل التكوين (%{count})"
-            one: "تعديل التكوين (%{count})"
-            two: "تعديل التكوين (%{count})"
-            few: "تعديل التكوين (%{count})"
-            many: "تعديل التكوين (%{count})"
-            other: "تعديل التكوين (%{count})"
+            zero: "تعديل الإعداد (%{count})"
+            one: "تعديل الإعداد (%{count})"
+            two: "تعديل الإعداد (%{count})"
+            few: "تعديل الإعداد (%{count})"
+            many: "تعديل الإعداد (%{count})"
+            other: "تعديل الإعداد (%{count})"
         user:
           label: المستخدم
         pm:
@@ -148,18 +153,27 @@ ar:
               label: معرِّف الموضوع
         post_created_edited:
           fields:
+            original_post_only:
+              label: المنشور الأصلي فقط
+              description: لن يتم تشغيله إلا إذا كان المنشور هي المنشور الأصلي في الموضوع
             action_type:
               label: نوع الإجراء
               description: "اختياري، تقييد التشغيل إلى الأحداث التي تم إنشاؤها أو تحريرها فقط"
             valid_trust_levels:
               label: مستويات الثقة الصالحة
               description: سيتم التشغيل فقط إذا تم إنشاء المنشور بواسطة مستخدم في مستويات الثقة هذه، ويتم تعيينه افتراضيًا على أي مستوى ثقة
+            restricted_tags:
+              label: الوسوم
+              description: اختياري، لن يتم تشغيله إلا إذا كان المنشور يحتوي على أي هذه الوسوم
             restricted_category:
               label: الفئة
               description: اختياري، لن يتم تشغيله إلا إذا كان موضوع المشاركة ضمن هذه الفئة
             restricted_group:
               label: المجموعة
-              description: اختياري، لن يتم تشغيله إلا إذا كان موضوع المشاركة عبارة عن رسالة خاصة في البريد الوارد لهذه المجموعة
+              description: اختياري، لن يتم تشغيله إلا إذا كان موضوع المشاركة عبارة عن رسالة شخصية في البريد الوارد لهذه المجموعة
+            restricted_groups:
+              label: المجموعات
+              description: اختياري، لن يتم تشغيله إلا إذا كان موضوع المشاركة عبارة عن رسالة شخصية في أحد صناديق البريد الوارد للمجموعة
             ignore_group_members:
               label: تجاهل أعضاء المجموعة
               description: تخطي المشغِّل إذا كان المرسل عضوًا في المجموعة المحدَّدة أعلاه
@@ -172,8 +186,25 @@ ar:
             first_topic_only:
               label: الموضوع الأول فقط
               description: لن يتم تشغيله إلا إذا كان الموضوع هو أول موضوع أنشأه المستخدم
+            skip_via_email:
+              label: "التخطي عبر البريد الإلكتروني"
+              description: "تخطي المشغِّل إذا كان المنشور قد تم إنشاؤه عبر البريد الإلكتروني"
           created: تاريخ الإنشاء
-          edited: تم تحريرها
+          edited: تاريخ التحرير
+        user_updated:
+          fields:
+            user_profile:
+              label: حقول ملف تعريف المستخدم
+              description: سيتم تشغيله فقط إذا ملأ المستخدم كل هذه الحقول
+            custom_fields:
+              label: الحقول المخصَّصة للمستخدم
+              description: سيتم تشغيله فقط إذا ملأ المستخدم كل هذه الحقول
+            once_per_user:
+              label: مرة واحدة لكل مستخدم
+              description: سيتم تشغيله مرة واحدة فقط لكل مستخدم
+            new_users_only:
+              label: المستخدمون الجُدد فقط
+              description: سيتم تشغيله فقط للمستخدمين الجُدد الذين ينضمون بعد تفعيل هذه الأتمتة
         category_created_edited:
           fields:
             restricted_category:
@@ -199,6 +230,23 @@ ar:
             valid_trust_levels:
               label: مستويات الثقة الصالحة
               description: سيتم التشغيل فقط إذا تم إنشاء المنشور بواسطة مستخدم في مستويات الثقة هذه، ويتم تعيينه افتراضيًا على أي مستوى ثقة
+        topic_tags_changed:
+          trigger_on_modes:
+            tags_added_or_removed: الوسوم التي تمت إضافتها أو إزالتها
+            tags_added: تمت إضافة الوسوم
+            tags_removed: تمت إزالة الوسوم
+          fields:
+            watching_categories:
+              label: فئات المراقبة
+              description: سيتم تشغيل هذا الإعداد فقط إذا كان الموضوع ضمن إحدى هذه الفئات
+            watching_tags:
+              label: مراقبة الوسوم
+              description: سيتم تشغيل هذا الإعداد فقط إذا كان الموضوع يتضمَّن أيًا من هذه الوسوم
+            trigger_on:
+              label: يتم تشغيله عندما
+            trigger_with_pms:
+              label: التشغيل مع الرسائل الخاصة
+              description: سيتم تشغيله حتى لو تم تغيير الوسوم في رسالة خاصة
         after_post_cook:
           fields:
             valid_trust_levels:
@@ -224,6 +272,7 @@ ar:
               description: يستجيب مرة واحدة فقط لكل موضوع
             word_answer_list:
               label: قائمة أزواج الكلمات/الإجابات
+              description: "يحدِّد قائمة بمجموعات المفاتيح/القيم، حيث يكون \"‎المفتاح\" ‎ هو المصطلح الذي تم البحث عنه، و‎\"‎القيمة‎\" هي نص الرد. يمكن ترك‎ \"‎المفتاح‎\" ‎فارغًا للرد على جميع المشغِّلات، بغض النظر عن المحتوى. لاحظ أن‎ \"‎القيمة‎\" ‎تقبل‎ \"{{key}}\" ‎كعنصر نائب ليتم استبداله بقيمة‎ \"‎المفتاح‎\" ‎في الرد. لاحظ أن‎ `key` ‎سيتم تقييمه كتعبير عادي، ويجب تجنب الأحرف الخاصة مثل `.` إذا كنت تقصد نقطة بالفعل، على سبيل المثال‎: `\\.`"
             answering_user:
               label: المستخدم المجيب
               description: يتم تعيينه افتراضيًا إلى مستخدم النظام
@@ -236,10 +285,25 @@ ar:
           fields:
             creator:
               label: المُنشئ
+              post_creator_context: منشئ المنشور
+              updated_user_context: المستخدم المحدَّث
             topic:
               label: معرِّف الموضوع
             post:
               label: محتوى المنشور
+        topic:
+          fields:
+            creator:
+              label: المنشئ
+              updated_user_context: المستخدم المحدَّث
+            body:
+              label: نص الموضوع
+            title:
+              label: عنوان الموضوع
+            category:
+              label: فئة الموضوع
+            tags:
+              label: وسوم الموضوع
         group_category_notification_default:
           fields:
             group:
@@ -255,7 +319,7 @@ ar:
               label: المستوى
             notice:
               label: الإخطار
-              description: يقبل HTML، لا تملأ هذا بإدخال غير موثوق فيه!
+              description: يقبل HTML، لا تملأ هذا الحقل بإدخالٍ غير موثوق به!
           levels:
             warning: تحذير
             info: المعلومات
@@ -291,7 +355,7 @@ ar:
             pinnable_topic:
               label: معرِّف الموضوع
             pinned_globally:
-              label: مثبَّت بشكلٍ عام
+              label: مثبَّت بشكلٍٍ عام
             pinned_until:
               label: مثبَّت حتى
         banner_topic:
@@ -341,6 +405,7 @@ ar:
           fields:
             custom_field_name:
               label: "اسم الحقل المخصَّص للمستخدم"
+      unnamed_automation: "أتمتة دون اسم"
       models:
         script:
           name:
@@ -357,6 +422,8 @@ ar:
             label: البرنامج النصي
           version:
             label: الإصدار
+          status:
+            label: الحالة
           enabled:
             label: مفعَّلة
           disabled:

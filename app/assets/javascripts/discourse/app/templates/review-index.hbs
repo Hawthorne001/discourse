@@ -1,3 +1,34 @@
+{{#if this.displayUnknownReviewableTypesWarning}}
+  <div class="alert alert-info unknown-reviewables">
+    <span class="text">{{i18n
+        "review.unknown.title"
+        count=this.unknownReviewableTypes.length
+      }}</span>
+
+    <ul>
+      {{#each this.unknownReviewableTypes as |type|}}
+        <li>{{type}}</li>
+      {{/each}}
+    </ul>
+    <span class="text">{{htmlSafe
+        (i18n
+          "review.unknown.instruction" url="https://meta.discourse.org/t/350179"
+        )
+      }}</span>
+    <div class="unknown-reviewables__options">
+      <LinkTo @route="adminPlugins.index" class="btn">
+        {{d-icon "puzzle-piece"}}
+        <span>{{i18n "review.unknown.enable_plugins"}}</span>
+      </LinkTo>
+      <DButton
+        @label="review.unknown.ignore_all"
+        @icon="trash-can"
+        @action={{this.ignoreAllUnknownTypes}}
+        class="btn-default"
+      />
+    </div>
+  </div>
+{{/if}}
 <div class="reviewable-container">
   <div class="reviewable-list">
     {{#if this.reviewables}}
@@ -55,6 +86,18 @@
 
       <div class="reviewable-filter">
         <label class="filter-label">
+          {{i18n "review.filters.score_type.title"}}
+        </label>
+        <ComboBox
+          @value={{this.filterScoreType}}
+          @content={{this.allScoreTypes}}
+          @onChange={{fn (mut this.filterScoreType)}}
+          @options={{hash none="review.filters.score_type.all"}}
+        />
+      </div>
+
+      <div class="reviewable-filter">
+        <label class="filter-label">
           {{i18n "review.filters.priority.title"}}
         </label>
         <ComboBox
@@ -72,6 +115,21 @@
           @value={{this.filterCategoryId}}
           @onChange={{fn (mut this.filterCategoryId)}}
           @options={{hash none="review.filters.all_categories" clearable=true}}
+        />
+      </div>
+
+      <div class="reviewable-filter topic-filter">
+        <label class="filter-label">
+          {{i18n "review.filtered_flagged_by"}}
+        </label>
+        <EmailGroupUserChooser
+          @value={{this.filterFlaggedBy}}
+          @onChange={{action "updateFilterFlaggedBy"}}
+          @options={{hash
+            maximum=1
+            excludeCurrentUser=false
+            fullWidthWrap=true
+          }}
         />
       </div>
 
@@ -113,7 +171,7 @@
           </label>
           <DButton
             @label="review.show_all_topics"
-            @icon="times"
+            @icon="xmark"
             @action={{action "resetTopic"}}
             class="btn-default"
           />
@@ -147,7 +205,7 @@
 
     <div class="reviewable-filters-actions">
       <DButton
-        @icon="sync"
+        @icon="arrows-rotate"
         @label="review.filters.refresh"
         @action={{action "refresh"}}
         class="btn-primary refresh"

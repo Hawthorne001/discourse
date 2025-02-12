@@ -34,6 +34,8 @@ pl_PL:
         icons:
           title: "Ikony"
           full_list: "Zobacz pełną listę niesamowitych ikon czcionek"
+        forms:
+          title: "Formularze"
         buttons:
           title: "Przyciski"
         dropdowns:
@@ -72,6 +74,8 @@ pl_PL:
           title: "Powiadomienia tematu"
         post:
           title: "Wpis"
+        post_list:
+          title: "Lista postów"
         topic_map:
           title: "Mapa tematu"
         site_header:

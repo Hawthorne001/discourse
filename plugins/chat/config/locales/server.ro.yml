@@ -8,7 +8,6 @@ ro:
   site_settings:
     chat_allowed_groups: "Utilizatorii din aceste grupuri pot discuta pe chat. Reține că administratorii și moderatorii pot accesa întotdeauna chat-ul."
     chat_message_flag_allowed_groups: "Utilizatorii din aceste grupuri au dreptul de a marca mesajele de chat. Reține că administratorii și moderatorii pot marca întotdeauna mesajele de chat."
-    chat_preferred_mobile_index: "Filă preferată la încărcarea /chat pe mobil."
   system_messages:
     private_channel_title: "Canal %{id}"
   chat:
@@ -38,21 +37,24 @@ ro:
       without_membership: "%{first_identifier} nu s-a alăturat acestui canal."
       without_membership_multiple:
         one: "%{first_identifier} și încă %{count} utilizator nu s-au alăturat acestui canal."
-        few: "%{first_identifier} și alți %{count} utilizatori nu s-au alăturat acestui canal."
-        other: "%{first_identifier} și alți %{count} utilizatori nu s-au alăturat acestui canal."
+        few: "%{first_identifier} și încă %{count} utilizatori nu s-au alăturat acestui canal."
+        other: "%{first_identifier} și încă %{count} de utilizatori nu s-au alăturat acestui canal."
       group_mentions_disabled: "%{first_identifier} nu permite mențiuni."
       group_mentions_disabled_multiple:
         one: "%{first_identifier} și %{count} alt grup nu permit mențiuni."
         few: "%{first_identifier} și %{count} alte grupuri nu permit mențiuni."
         other: "%{first_identifier} și %{count} alte grupuri nu permit mențiuni."
       too_many_members: "%{first_identifier} are prea mulți membri. Nimeni nu a fost anunțat."
+    onebox:
+      inline_to_thread: "%{thread_title} - #%{chat_channel}"
+      inline_to_thread_no_title: "Discuție în #%{chat_channel}"
     transcript:
       default_thread_title: "Fir"
       split_thread_range: "mesaje de la %{start} la %{end} din %{total}"
   discourse_push_notifications:
     popup:
       chat_mention:
-        direct: '%{username} te-a menționat în discuția "%{channel}"'
+        direct: '%{username} te-a menționat în discuția „%{channel}”'
   reviewable_score_types:
     notify_user:
       chat_pm_body: "%{link}\n\n%{message}"

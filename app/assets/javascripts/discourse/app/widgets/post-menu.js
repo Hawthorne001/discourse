@@ -4,17 +4,19 @@ import { Promise } from "rsvp";
 import { h } from "virtual-dom";
 import AdminPostMenu from "discourse/components/admin-post-menu";
 import DeleteTopicDisallowedModal from "discourse/components/modal/delete-topic-disallowed";
+import { smallUserAttrs } from "discourse/components/small-user-list";
 import { formattedReminderTime } from "discourse/lib/bookmark";
+import discourseLater from "discourse/lib/later";
 import { recentlyCopied, showAlert } from "discourse/lib/post-action-feedback";
-import { userPath } from "discourse/lib/url";
 import {
   NO_REMINDER_ICON,
   WITH_REMINDER_ICON,
 } from "discourse/models/bookmark";
-import RenderGlimmer from "discourse/widgets/render-glimmer";
+import RenderGlimmer, {
+  registerWidgetShim,
+} from "discourse/widgets/render-glimmer";
 import { applyDecorators, createWidget } from "discourse/widgets/widget";
-import discourseLater from "discourse-common/lib/later";
-import I18n from "discourse-i18n";
+import { i18n } from "discourse-i18n";
 
 const LIKE_ACTION = 2;
 const VIBRATE_DURATION = 5;
@@ -51,16 +53,6 @@ export function replaceButton(name, replaceWith) {
 
 function registerButton(name, builder) {
   _builders[name] = builder;
-}
-
-function smallUserAtts(user) {
-  return {
-    template: user.avatar_template,
-    username: user.username,
-    post_url: user.post_url,
-    url: userPath(user.username_lower),
-    unknown: user.unknown,
-  };
 }
 
 export function buildButton(name, widget) {
@@ -100,10 +92,7 @@ registerButton("read-count", (attrs, state) => {
   if (attrs.showReadIndicator) {
     const count = attrs.readCount;
     if (count > 0) {
-      let ariaPressed = "false";
-      if (state?.readers && state.readers.length > 0) {
-        ariaPressed = "true";
-      }
+      let ariaPressed = (state?.readers?.length > 0).toString();
       return {
         action: "toggleWhoRead",
         title: "post.controls.read_indicator",
@@ -111,7 +100,7 @@ registerButton("read-count", (attrs, state) => {
         contents: count,
         iconRight: true,
         addContainer: false,
-        translatedAriaLabel: I18n.t("post.sr_post_read_count_button", {
+        translatedAriaLabel: i18n("post.sr_post_read_count_button", {
           count,
         }),
         ariaPressed,
@@ -126,7 +115,7 @@ registerButton("read", (attrs) => {
     return {
       action: "toggleWhoRead",
       title: "post.controls.read_indicator",
-      icon: "book-reader",
+      icon: "book-open-reader",
       before: "read-count",
       addContainer: false,
     };
@@ -151,10 +140,8 @@ function likeCount(attrs, state) {
       addContainer = true;
     }
 
-    let ariaPressed = "false";
-    if (state?.likedUsers && state.likedUsers.length > 0) {
-      ariaPressed = "true";
-    }
+    let ariaPressed = (state?.likedUsers?.length > 0).toString();
+
     return {
       action: "toggleWhoLiked",
       title,
@@ -164,7 +151,7 @@ function likeCount(attrs, state) {
       iconRight: true,
       addContainer,
       titleOptions: { count: attrs.liked ? count - 1 : count },
-      translatedAriaLabel: I18n.t("post.sr_post_like_count_button", { count }),
+      translatedAriaLabel: i18n("post.sr_post_like_count_button", { count }),
       ariaPressed,
     };
   }
@@ -179,9 +166,7 @@ registerButton(
       return likeCount(attrs);
     }
 
-    const className = attrs.liked
-      ? "toggle-like has-like fade-out"
-      : "toggle-like like";
+    const className = attrs.liked ? "toggle-like has-like" : "toggle-like like";
 
     const button = {
       action: "like",
@@ -224,20 +209,30 @@ registerButton("flag-count", (attrs) => {
   };
 });
 
-registerButton("flag", (attrs) => {
-  if (attrs.reviewableId || (attrs.canFlag && !attrs.hidden)) {
-    let button = {
-      action: "showFlags",
-      title: "post.controls.flag",
-      icon: "flag",
-      className: "create-flag",
-    };
-    if (attrs.reviewableId) {
-      button.before = "flag-count";
+registerButton(
+  "flag",
+  (attrs, _state, siteSettings, _postMenuSettings, currentUser) => {
+    if (
+      attrs.reviewableId ||
+      (attrs.canFlag && !attrs.hidden) ||
+      (siteSettings.allow_tl0_and_anonymous_users_to_flag_illegal_content &&
+        !currentUser)
+    ) {
+      const button = {
+        action: "showFlags",
+        title: currentUser
+          ? "post.controls.flag"
+          : "post.controls.anonymous_flag",
+        icon: "flag",
+        className: "create-flag",
+      };
+      if (attrs.reviewableId) {
+        button.before = "flag-count";
+      }
+      return button;
     }
-    return button;
   }
-});
+);
 
 registerButton("edit", (attrs) => {
   if (attrs.canEdit) {
@@ -245,7 +240,7 @@ registerButton("edit", (attrs) => {
       action: "editPost",
       className: "edit",
       title: "post.controls.edit",
-      icon: "pencil-alt",
+      icon: "pencil",
       alwaysShowYours: true,
     };
   }
@@ -261,7 +256,7 @@ registerButton("reply-small", (attrs) => {
     title: "post.controls.reply",
     icon: "reply",
     className: "reply",
-    translatedAriaLabel: I18n.t("post.sr_reply_to", {
+    translatedAriaLabel: i18n("post.sr_reply_to", {
       post_number: attrs.post_number,
       username: attrs.username,
     }),
@@ -276,7 +271,7 @@ registerButton("wiki-edit", (attrs) => {
       action: "editPost",
       className: "edit create",
       title: "post.controls.edit",
-      icon: "far-edit",
+      icon: "far-pen-to-square",
       alwaysShowYours: true,
     };
     if (!attrs.mobileView) {
@@ -287,53 +282,52 @@ registerButton("wiki-edit", (attrs) => {
 });
 
 registerButton("replies", (attrs, state, siteSettings) => {
-  const replyCount = attrs.replyCount;
-  if (!replyCount) {
+  const count = attrs.replyCount;
+
+  if (!count) {
     return;
   }
 
-  let action = "toggleRepliesBelow",
-    icon = state.repliesShown ? "chevron-up" : "chevron-down";
+  let title;
+  let action = "toggleRepliesBelow";
+  let icon = state.repliesShown ? "chevron-up" : "chevron-down";
 
   if (siteSettings.enable_filtered_replies_view) {
     action = "toggleFilteredRepliesView";
     icon = state.filteredRepliesShown ? "chevron-up" : "chevron-down";
+    title = state.filteredRepliesShown
+      ? "post.view_all_posts"
+      : "post.filtered_replies_hint";
   }
 
   // Omit replies if the setting `suppress_reply_directly_below` is enabled
   if (
-    replyCount === 1 &&
+    count === 1 &&
     attrs.replyDirectlyBelow &&
     siteSettings.suppress_reply_directly_below
   ) {
     return;
   }
 
-  let ariaPressed;
+  let ariaPressed, ariaExpanded;
+
   if (!siteSettings.enable_filtered_replies_view) {
-    ariaPressed = state.repliesShown ? "true" : "false";
+    ariaPressed = state.repliesShown.toString();
+    ariaExpanded = state.repliesShown.toString();
   }
+
   return {
     action,
     icon,
     className: "show-replies",
-    titleOptions: { count: replyCount },
-    title: siteSettings.enable_filtered_replies_view
-      ? state.filteredRepliesShown
-        ? "post.view_all_posts"
-        : "post.filtered_replies_hint"
-      : "",
-    labelOptions: { count: replyCount },
+    titleOptions: { count },
+    title,
+    labelOptions: { count },
     label: attrs.mobileView ? "post.has_replies_count" : "post.has_replies",
     iconRight: !siteSettings.enable_filtered_replies_view || attrs.mobileView,
     disabled: !!attrs.deleted,
-    translatedAriaLabel: I18n.t("post.sr_expand_replies", {
-      count: replyCount,
-    }),
-    ariaExpanded:
-      !siteSettings.enable_filtered_replies_view && state.repliesShown
-        ? "true"
-        : "false",
+    translatedAriaLabel: i18n("post.sr_expand_replies", { count }),
+    ariaExpanded,
     ariaPressed,
     ariaControls: `embedded-posts__bottom--${attrs.post_number}`,
   };
@@ -354,6 +348,7 @@ registerButton("copyLink", () => {
     icon: "d-post-share",
     className: "post-action-menu__copy-link",
     title: "post.controls.copy_title",
+    ariaLive: "polite",
   };
 });
 
@@ -363,7 +358,7 @@ registerButton("reply", (attrs, state, siteSettings, postMenuSettings) => {
     title: "post.controls.reply",
     icon: "reply",
     className: "reply create fade-out",
-    translatedAriaLabel: I18n.t("post.sr_reply_to", {
+    translatedAriaLabel: i18n("post.sr_reply_to", {
       post_number: attrs.post_number,
       username: attrs.username,
     }),
@@ -443,7 +438,7 @@ registerButton("delete", (attrs) => {
       id: "recover_topic",
       action: "recoverPost",
       title: "topic.actions.recover",
-      icon: "undo",
+      icon: "arrow-rotate-left",
       className: "recover",
     };
   } else if (attrs.canDeleteTopic) {
@@ -451,7 +446,7 @@ registerButton("delete", (attrs) => {
       id: "delete_topic",
       action: "deletePost",
       title: "post.controls.delete_topic",
-      icon: "far-trash-alt",
+      icon: "trash-can",
       className: "delete",
     };
   } else if (attrs.canRecover) {
@@ -459,7 +454,7 @@ registerButton("delete", (attrs) => {
       id: "recover",
       action: "recoverPost",
       title: "post.controls.undelete",
-      icon: "undo",
+      icon: "arrow-rotate-left",
       className: "recover",
     };
   } else if (attrs.canDelete) {
@@ -467,7 +462,7 @@ registerButton("delete", (attrs) => {
       id: "delete",
       action: "deletePost",
       title: "post.controls.delete",
-      icon: "far-trash-alt",
+      icon: "trash-can",
       className: "delete",
     };
   } else if (attrs.showFlagDelete) {
@@ -475,7 +470,7 @@ registerButton("delete", (attrs) => {
       id: "delete_topic",
       action: "showDeleteTopicModal",
       title: "post.controls.delete_topic_disallowed",
-      icon: "far-trash-alt",
+      icon: "trash-can",
       className: "delete",
     };
   }
@@ -636,7 +631,7 @@ export default createWidget("post-menu", {
         action: "showMoreActions",
         title: "show_more",
         className: "show-more-actions",
-        icon: "ellipsis-h",
+        icon: "ellipsis",
       });
       visibleButtons.splice(visibleButtons.length - 1, 0, showMore);
       hasShowMoreButton = true;
@@ -789,7 +784,7 @@ export default createWidget("post-menu", {
           listClassName: "who-read",
           description,
           count,
-          ariaLabel: I18n.t(
+          ariaLabel: i18n(
             "post.actions.people.sr_post_readers_list_description"
           ),
         })
@@ -811,7 +806,7 @@ export default createWidget("post-menu", {
           listClassName: "who-liked",
           description,
           count,
-          ariaLabel: I18n.t(
+          ariaLabel: i18n(
             "post.actions.people.sr_post_likers_list_description"
           ),
         })
@@ -910,14 +905,13 @@ export default createWidget("post-menu", {
 
   getWhoLiked() {
     const { attrs, state } = this;
-
     return this.store
       .find("post-action-user", {
         id: attrs.id,
         post_action_type_id: LIKE_ACTION,
       })
       .then((users) => {
-        state.likedUsers = users.map(smallUserAtts);
+        state.likedUsers = users.map(smallUserAttrs);
         state.total = users.totalRows;
       });
   },
@@ -926,7 +920,7 @@ export default createWidget("post-menu", {
     const { attrs, state } = this;
 
     return this.store.find("post-reader", { id: attrs.id }).then((users) => {
-      state.readers = users.map(smallUserAtts);
+      state.readers = users.map(smallUserAttrs);
       state.totalReaders = users.totalRows;
     });
   },
@@ -949,3 +943,40 @@ export default createWidget("post-menu", {
     }
   },
 });
+
+// TODO (glimmer-post-menu): Once this widget is removed the `<section>...</section>` tag needs to be added to the PostMenu component
+registerWidgetShim(
+  "glimmer-post-menu",
+  "section.post-menu-area.clearfix",
+  hbs`
+    <Post::Menu
+      @canCreatePost={{@data.canCreatePost}}
+      @filteredRepliesView={{@data.filteredRepliesView}}
+      @nextPost={{@data.nextPost}}
+      @post={{@data.post}}
+      @prevPost={{@data.prevPost}}
+      @repliesShown={{@data.repliesShown}}
+      @showReadIndicator={{@data.showReadIndicator}}
+      @changeNotice={{@data.changeNotice}}
+      @changePostOwner={{@data.changePostOwner}}
+      @copyLink={{@data.copyLink}}
+      @deletePost={{@data.deletePost}}
+      @editPost={{@data.editPost}}
+      @grantBadge={{@data.grantBadge}}
+      @lockPost={{@data.lockPost}}
+      @permanentlyDeletePost={{@data.permanentlyDeletePost}}
+      @rebakePost={{@data.rebakePost}}
+      @recoverPost={{@data.recoverPost}}
+      @replyToPost={{@data.replyToPost}}
+      @share={{@data.share}}
+      @showFlags={{@data.showFlags}}
+      @showLogin={{@data.showLogin}}
+      @showPagePublish={{@data.showPagePublish}}
+      @toggleLike={{@data.toggleLike}}
+      @togglePostType={{@data.togglePostType}}
+      @toggleReplies={{@data.toggleReplies}}
+      @toggleWiki={{@data.toggleWiki}}
+      @unhidePost={{@data.unhidePost}}
+      @unlockPost={{@data.unlockPost}}
+    />`
+);

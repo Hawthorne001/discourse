@@ -1027,20 +1027,6 @@ RSpec.describe Post do
     end
   end
 
-  describe "reply_history" do
-    let!(:p1) { Fabricate(:post, post_args) }
-    let!(:p2) { Fabricate(:post, post_args.merge(reply_to_post_number: p1.post_number)) }
-    let!(:p3) { Fabricate(:post, post_args) }
-    let!(:p4) { Fabricate(:post, post_args.merge(reply_to_post_number: p2.post_number)) }
-
-    it "returns the posts in reply to this post" do
-      expect(p4.reply_history).to eq([p1, p2])
-      expect(p4.reply_history(1)).to eq([p2])
-      expect(p3.reply_history).to be_blank
-      expect(p2.reply_history).to eq([p1])
-    end
-  end
-
   describe "reply_ids" do
     fab!(:topic)
     let!(:p1) { Fabricate(:post, topic: topic, post_number: 1) }
@@ -1510,6 +1496,19 @@ RSpec.describe Post do
       expect { post.hide!(PostActionType.types[:off_topic]) }.to change { post.reload.hidden }.from(
         false,
       ).to(true)
+    end
+
+    it "should inform the user when custom flag" do
+      custom_flag = Fabricate(:flag, name: "custom flag")
+      post.hide!(PostActionType.types[:custom_custom_flag])
+
+      jobs = Jobs::SendSystemMessage.jobs
+      expect(jobs.size).to eq(1)
+
+      Jobs::SendSystemMessage.new.execute(jobs[0]["args"][0].with_indifferent_access)
+      expect(Post.last.raw).to match("custom flag")
+
+      custom_flag.destroy!
     end
 
     it "should decrease user_stat topic_count for first post" do

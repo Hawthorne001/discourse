@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 class TranslationOverride < ActiveRecord::Base
+  # TODO: Remove once
+  # 20240711123755_drop_compiled_js_from_translation_overrides has been
+  # promoted to pre-deploy
+  self.ignored_columns = %w[compiled_js]
+
   # Allowlist i18n interpolation keys that can be included when customizing translations
   ALLOWED_CUSTOM_INTERPOLATION_KEYS = {
     %w[
@@ -47,22 +52,26 @@ class TranslationOverride < ActiveRecord::Base
   validate :check_MF_string, if: :message_format?
 
   attribute :status, :integer
-  enum status: { up_to_date: 0, outdated: 1, invalid_interpolation_keys: 2, deprecated: 3 }
+  enum :status, { up_to_date: 0, outdated: 1, invalid_interpolation_keys: 2, deprecated: 3 }
 
-  scope :mf_locales, ->(locale) { where(locale: locale).where("translation_key LIKE '%_MF'") }
+  scope :mf_locales,
+        ->(locale) { not_deprecated.where(locale: locale).where("translation_key LIKE '%_MF'") }
   scope :client_locales,
         ->(locale) do
-          where(locale: locale)
+          not_deprecated
+            .where(locale: locale)
             .where("translation_key LIKE 'js.%' OR translation_key LIKE 'admin_js.%'")
             .where.not("translation_key LIKE '%_MF'")
         end
+
+  before_update :refresh_status
 
   def self.upsert!(locale, key, value)
     params = { locale: locale, translation_key: key }
 
     translation_override = find_or_initialize_by(params)
     sanitized_value =
-      translation_override.sanitize_field(value, additional_attributes: ["data-auto-route"])
+      translation_override.sanitize_field(value, additional_attributes: %w[data-auto-route target])
     original_translation =
       I18n.overrides_disabled { I18n.t(transform_pluralized_key(key), locale: :en) }
 
@@ -105,10 +114,8 @@ class TranslationOverride < ActiveRecord::Base
   end
 
   def self.expire_cache(locale, key)
-    if key.starts_with?("post_action_types.")
-      ApplicationSerializer.expire_cache_fragment!("post_action_types_#{locale}")
-    elsif key.starts_with?("topic_flag_types.")
-      ApplicationSerializer.expire_cache_fragment!("post_action_flag_types_#{locale}")
+    if key.starts_with?("post_action_types.") || key.starts_with?("topic_flag_types.")
+      PostActionType.new.expire_cache
     else
       return false
     end
@@ -204,6 +211,21 @@ class TranslationOverride < ActiveRecord::Base
   rescue MessageFormat::Compiler::CompileError => e
     errors.add(:base, e.cause.message)
   end
+
+  def refresh_status
+    self.original_translation = current_default
+
+    self.status =
+      if original_translation_deleted?
+        "deprecated"
+      elsif invalid_interpolation_keys.present?
+        "invalid_interpolation_keys"
+      elsif original_translation_updated?
+        "outdated"
+      else
+        "up_to_date"
+      end
+  end
 end
 
 # == Schema Information
@@ -216,7 +238,6 @@ end
 #  value                :string           not null
 #  created_at           :datetime         not null
 #  updated_at           :datetime         not null
-#  compiled_js          :text
 #  original_translation :text
 #  status               :integer          default("up_to_date"), not null
 #

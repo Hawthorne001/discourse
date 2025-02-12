@@ -56,6 +56,15 @@ class Post < ActiveRecord::Base
   has_many :post_revisions
   has_many :revisions, -> { order(:number) }, foreign_key: :post_id, class_name: "PostRevision"
 
+  has_many :moved_posts_as_old_post,
+           class_name: "MovedPost",
+           foreign_key: :old_post_id,
+           dependent: :destroy
+  has_many :moved_posts_as_new_post,
+           class_name: "MovedPost",
+           foreign_key: :new_post_id,
+           dependent: :destroy
+
   has_many :user_actions, foreign_key: :target_post_id
 
   belongs_to :image_upload, class_name: "Upload"
@@ -77,11 +86,11 @@ class Post < ActiveRecord::Base
                 :skip_unique_check,
                 :skip_validation
 
-  MISSING_UPLOADS ||= "missing uploads"
-  MISSING_UPLOADS_IGNORED ||= "missing uploads ignored"
-  NOTICE ||= "notice"
+  MISSING_UPLOADS = "missing uploads"
+  MISSING_UPLOADS_IGNORED = "missing uploads ignored"
+  NOTICE = "notice"
 
-  SHORT_POST_CHARS ||= 1200
+  SHORT_POST_CHARS = 1200
 
   register_custom_field_type(MISSING_UPLOADS, :json)
   register_custom_field_type(MISSING_UPLOADS_IGNORED, :boolean)
@@ -555,9 +564,13 @@ class Post < ActiveRecord::Base
     flags.count != 0
   end
 
+  def post_action_type_view
+    @post_action_type_view ||= PostActionTypeView.new
+  end
+
   def flags
     post_actions.where(
-      post_action_type_id: PostActionType.flag_types_without_additional_message.values,
+      post_action_type_id: post_action_type_view.flag_types_without_additional_message.values,
       deleted_at: nil,
     )
   end
@@ -642,9 +655,10 @@ class Post < ActiveRecord::Base
         edit_delay: SiteSetting.cooldown_minutes_after_hiding_posts,
         flag_reason:
           I18n.t(
-            "flag_reasons.#{PostActionType.types[post_action_type_id]}",
+            "flag_reasons.#{post_action_type_view.types[post_action_type_id]}",
             locale: SiteSetting.default_locale,
             base_path: Discourse.base_path,
+            default: PostActionType.names[post_action_type_id],
           ),
       }
 
@@ -971,28 +985,7 @@ class Post < ActiveRecord::Base
       .count
   end
 
-  def reply_history(max_replies = 100, guardian = nil)
-    post_ids = DB.query_single(<<~SQL, post_id: id, topic_id: topic_id)
-    WITH RECURSIVE breadcrumb(id, reply_to_post_number) AS (
-          SELECT p.id, p.reply_to_post_number FROM posts AS p
-            WHERE p.id = :post_id
-          UNION
-             SELECT p.id, p.reply_to_post_number FROM posts AS p, breadcrumb
-               WHERE breadcrumb.reply_to_post_number = p.post_number
-                 AND p.topic_id = :topic_id
-        )
-    SELECT id from breadcrumb
-    WHERE id <> :post_id
-    ORDER by id
-    SQL
-
-    # [1,2,3][-10,-1] => nil
-    post_ids = (post_ids[(0 - max_replies)..-1] || post_ids)
-
-    Post.secured(guardian).where(id: post_ids).includes(:user, :topic).order(:id).to_a
-  end
-
-  MAX_REPLY_LEVEL ||= 1000
+  MAX_REPLY_LEVEL = 1000
 
   def reply_ids(guardian = nil, only_replies_to_single_post: true)
     builder = DB.build(<<~SQL)

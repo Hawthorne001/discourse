@@ -32,7 +32,7 @@ describe DiscourseAutomation::AdminAutomationsController do
       before { sign_in(Fabricate(:admin)) }
 
       it "shows the automation" do
-        get "/admin/plugins/discourse-automation/automations/#{automation.id}.json"
+        get "/admin/plugins/automation/automations/#{automation.id}.json"
         expect(response.status).to eq(200)
         expect(response.parsed_body["automation"]["id"]).to eq(automation.id)
       end
@@ -42,7 +42,49 @@ describe DiscourseAutomation::AdminAutomationsController do
       before { sign_in(Fabricate(:user)) }
 
       it "raises a 404" do
-        get "/admin/plugins/discourse-automation/automations/#{automation.id}.json"
+        get "/admin/plugins/automation/automations/#{automation.id}.json"
+        expect(response.status).to eq(404)
+      end
+    end
+  end
+
+  describe "#create" do
+    let(:script) { "forced_triggerable" }
+
+    before do
+      DiscourseAutomation::Scriptable.add(script) do
+        triggerable! :recurring, { recurrence: { interval: 1, frequency: "day" } }
+      end
+    end
+
+    after { DiscourseAutomation::Scriptable.remove(script) }
+
+    context "when logged in as an admin" do
+      before { sign_in(Fabricate(:admin)) }
+
+      it "creates the 'forced triggerable' automation" do
+        post "/admin/plugins/automation/automations.json",
+             params: {
+               automation: {
+                 name: "foobar",
+                 script:,
+               },
+             }
+        expect(response.status).to eq(200)
+      end
+    end
+
+    context "when logged in as a regular user" do
+      before { sign_in(Fabricate(:user)) }
+
+      it "raises a 404" do
+        post "/admin/plugins/automation/automations.json",
+             params: {
+               automation: {
+                 name: "foobar",
+                 script:,
+               },
+             }
         expect(response.status).to eq(404)
       end
     end
@@ -53,7 +95,7 @@ describe DiscourseAutomation::AdminAutomationsController do
       before { sign_in(Fabricate(:admin)) }
 
       it "updates the automation" do
-        put "/admin/plugins/discourse-automation/automations/#{automation.id}.json",
+        put "/admin/plugins/automation/automations/#{automation.id}.json",
             params: {
               automation: {
                 trigger: "another-trigger",
@@ -64,7 +106,7 @@ describe DiscourseAutomation::AdminAutomationsController do
 
       describe "invalid field’s component" do
         it "errors" do
-          put "/admin/plugins/discourse-automation/automations/#{automation.id}.json",
+          put "/admin/plugins/automation/automations/#{automation.id}.json",
               params: {
                 automation: {
                   script: automation.script,
@@ -87,7 +129,7 @@ describe DiscourseAutomation::AdminAutomationsController do
         end
 
         it "errors" do
-          put "/admin/plugins/discourse-automation/automations/#{automation.id}.json",
+          put "/admin/plugins/automation/automations/#{automation.id}.json",
               params: {
                 automation: {
                   script: automation.script,
@@ -105,7 +147,7 @@ describe DiscourseAutomation::AdminAutomationsController do
         it "forces the automation to be disabled" do
           expect(automation.enabled).to eq(true)
 
-          put "/admin/plugins/discourse-automation/automations/#{automation.id}.json",
+          put "/admin/plugins/automation/automations/#{automation.id}.json",
               params: {
                 automation: {
                   script: "bar",
@@ -122,7 +164,7 @@ describe DiscourseAutomation::AdminAutomationsController do
         it "forces the automation to be disabled" do
           expect(automation.enabled).to eq(true)
 
-          put "/admin/plugins/discourse-automation/automations/#{automation.id}.json",
+          put "/admin/plugins/automation/automations/#{automation.id}.json",
               params: {
                 automation: {
                   script: automation.script,
@@ -139,7 +181,7 @@ describe DiscourseAutomation::AdminAutomationsController do
         it "disables the automation" do
           expect(automation.enabled).to eq(true)
 
-          put "/admin/plugins/discourse-automation/automations/#{automation.id}.json",
+          put "/admin/plugins/automation/automations/#{automation.id}.json",
               params: {
                 automation: {
                   trigger: automation.trigger,
@@ -154,7 +196,7 @@ describe DiscourseAutomation::AdminAutomationsController do
 
       context "with invalid field’s metadata" do
         it "errors" do
-          put "/admin/plugins/discourse-automation/automations/#{automation.id}.json",
+          put "/admin/plugins/automation/automations/#{automation.id}.json",
               params: {
                 automation: {
                   script: automation.script,
@@ -172,7 +214,7 @@ describe DiscourseAutomation::AdminAutomationsController do
       before { sign_in(Fabricate(:user)) }
 
       it "raises a 404" do
-        put "/admin/plugins/discourse-automation/automations/#{automation.id}.json",
+        put "/admin/plugins/automation/automations/#{automation.id}.json",
             params: {
               automation: {
                 trigger: "another-trigger",
@@ -190,8 +232,15 @@ describe DiscourseAutomation::AdminAutomationsController do
       before { sign_in(Fabricate(:admin)) }
 
       it "destroys the automation" do
-        delete "/admin/plugins/discourse-automation/automations/#{automation.id}.json"
+        delete "/admin/plugins/automation/automations/#{automation.id}.json"
         expect(DiscourseAutomation::Automation.find_by(id: automation.id)).to eq(nil)
+      end
+
+      context "when the automation is not found" do
+        it "raises a 404" do
+          delete "/admin/plugins/automation/automations/999.json"
+          expect(response.status).to eq(404)
+        end
       end
     end
 
@@ -199,7 +248,7 @@ describe DiscourseAutomation::AdminAutomationsController do
       before { sign_in(Fabricate(:user)) }
 
       it "raises a 404" do
-        delete "/admin/plugins/discourse-automation/automations/#{automation.id}.json"
+        delete "/admin/plugins/automation/automations/#{automation.id}.json"
         expect(response.status).to eq(404)
       end
     end

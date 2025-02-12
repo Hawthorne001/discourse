@@ -41,6 +41,8 @@ class TopicView
     :user_custom_fields,
     :post_custom_fields,
     :post_number,
+    :include_suggested,
+    :include_related,
   )
 
   delegate :category, to: :topic, allow_nil: true, private: true
@@ -50,8 +52,10 @@ class TopicView
     1000
   end
 
+  CHUNK_SIZE = 20
+
   def self.chunk_size
-    20
+    CHUNK_SIZE
   end
 
   def self.default_post_custom_fields
@@ -149,6 +153,75 @@ class TopicView
     @can_review_topic = @guardian.can_review_topic?(@topic)
     @queued_posts_enabled = NewPostManager.queue_enabled? || category_require_reply_approval?
     @personal_message = @topic.private_message?
+  end
+
+  def user_badges(badge_names)
+    return if !badge_names.present?
+
+    user_ids = Set.new
+    posts.each { |post| user_ids << post.user_id if post.user_id }
+
+    return if !user_ids.present?
+
+    badges =
+      Badge.where("LOWER(name) IN (?)", badge_names.map(&:downcase)).where(enabled: true).to_a
+
+    sql = <<~SQL
+     SELECT user_id, badge_id
+     FROM user_badges
+     WHERE user_id IN (:user_ids) AND badge_id IN (:badge_ids)
+     GROUP BY user_id, badge_id
+     ORDER BY user_id, badge_id
+   SQL
+
+    user_badges = DB.query(sql, user_ids: user_ids, badge_ids: badges.map(&:id))
+
+    user_badge_mapping = {}
+    user_badges.each do |user_badge|
+      user_badge_mapping[user_badge.user_id] ||= []
+      user_badge_mapping[user_badge.user_id] << user_badge.badge_id
+    end
+
+    indexed_badges = {}
+
+    badges.each do |badge|
+      indexed_badges[badge.id] = {
+        id: badge.id,
+        name: badge.name,
+        slug: badge.slug,
+        description: badge.description,
+        icon: badge.icon,
+        image_url: badge.image_url,
+        badge_grouping_id: badge.badge_grouping_id,
+        badge_type_id: badge.badge_type_id,
+      }
+    end
+
+    user_badge_mapping =
+      user_badge_mapping
+        .map { |user_id, badge_ids| [user_id, { id: user_id, badge_ids: badge_ids }] }
+        .to_h
+
+    { users: user_badge_mapping, badges: indexed_badges }
+  end
+
+  def post_user_badges
+    return [] unless SiteSetting.enable_badges && SiteSetting.show_badges_in_post_header
+
+    @post_user_badges ||=
+      begin
+        UserBadge
+          .for_post_header_badges(@posts)
+          .reduce({}) do |hash, user_badge|
+            hash[user_badge.post_id] ||= []
+            hash[user_badge.post_id] << user_badge
+            hash
+          end
+      end
+
+    return [] unless @post_user_badges
+
+    @post_user_badges
   end
 
   def show_read_indicator?
@@ -531,16 +604,19 @@ class TopicView
   def category_group_moderator_user_ids
     @category_group_moderator_user_ids ||=
       begin
-        if SiteSetting.enable_category_group_moderation? &&
-             @topic.category&.reviewable_by_group.present?
+        if SiteSetting.enable_category_group_moderation? && @topic.category.present?
           posts_user_ids = Set.new(@posts.map(&:user_id))
           Set.new(
-            @topic
-              .category
-              .reviewable_by_group
-              .group_users
-              .where(user_id: posts_user_ids)
-              .pluck("distinct user_id"),
+            GroupUser
+              .joins(
+                "INNER JOIN category_moderation_groups ON category_moderation_groups.group_id = group_users.group_id",
+              )
+              .where(
+                "category_moderation_groups.category_id": @topic.category.id,
+                user_id: posts_user_ids,
+              )
+              .distinct
+              .pluck(:user_id),
           )
         else
           Set.new
@@ -598,17 +674,28 @@ class TopicView
       ReviewableQueuedPost.pending.where(target_created_by: @user, topic: @topic).order(:created_at)
   end
 
+  def post_action_type_view
+    @post_action_type_view ||= PostActionTypeView.new
+  end
+
   def actions_summary
     return @actions_summary unless @actions_summary.nil?
 
     @actions_summary = []
     return @actions_summary unless post = posts&.first
-    PostActionType.topic_flag_types.each do |sym, id|
+    post_action_type_view.topic_flag_types.each do |sym, id|
       @actions_summary << {
         id: id,
         count: 0,
         hidden: false,
-        can_act: @guardian.post_can_act?(post, sym),
+        can_act:
+          @guardian.post_can_act?(
+            post,
+            sym,
+            opts: {
+              post_action_type_view: post_action_type_view,
+            },
+          ),
       }
     end
 
@@ -616,27 +703,19 @@ class TopicView
   end
 
   def link_counts
-    @link_counts ||= TopicLink.counts_for(@guardian, @topic, posts)
+    # Normal memoizations doesn't work in nil cases, so using the ol' `defined?` trick
+    # to memoize more safely, as a modifier could nil this out.
+    return @link_counts if defined?(@link_counts)
+
+    @link_counts =
+      DiscoursePluginRegistry.apply_modifier(
+        :topic_view_link_counts,
+        TopicLink.counts_for(@guardian, @topic, posts),
+      )
   end
 
   def pm_params
     @pm_params ||= TopicQuery.new(@user).get_pm_params(topic)
-  end
-
-  def flag_types
-    @flag_types ||= PostActionType.types
-  end
-
-  def public_flag_types
-    @public_flag_types ||= PostActionType.public_types
-  end
-
-  def notify_flag_types
-    @notify_flag_types ||= PostActionType.notify_flag_types
-  end
-
-  def additional_message_types
-    @additional_message_types ||= PostActionType.additional_message_types
   end
 
   def suggested_topics
@@ -649,6 +728,7 @@ class TopicView
               { include_random: true, pm_params: pm_params },
               self,
             )
+
           TopicQuery.new(@user).list_suggested_for(topic, **kwargs)
         end
     else
@@ -749,7 +829,9 @@ class TopicView
         usernames.flatten!
         usernames.uniq!
 
-        users = User.where(username: usernames).includes(:user_status).index_by(&:username)
+        users = User.where(username_lower: usernames)
+        users = users.includes(:user_option, :user_status) if SiteSetting.enable_user_status
+        users = users.index_by(&:username_lower)
 
         mentions.reduce({}) do |hash, (post_id, post_mentioned_usernames)|
           hash[post_id] = post_mentioned_usernames.map { |username| users[username] }.compact
@@ -870,6 +952,29 @@ class TopicView
     Topic.with_deleted.includes(:category).find_by(id: topic_or_topic_id)
   end
 
+  def find_post_replies_ids(post_id)
+    DB.query_single(<<~SQL, post_id: post_id)
+        WITH RECURSIVE breadcrumb(id, reply_to_post_number, topic_id, level) AS (
+          SELECT id, reply_to_post_number, topic_id, 0
+            FROM posts
+          WHERE id = :post_id
+
+          UNION
+
+          SELECT p.id, p.reply_to_post_number, p.topic_id, b.level + 1
+            FROM posts AS p
+              , breadcrumb AS b
+          WHERE b.reply_to_post_number = p.post_number
+            AND b.topic_id = p.topic_id
+            AND b.level < #{SiteSetting.max_reply_history}
+        )
+        SELECT id
+          FROM breadcrumb
+        WHERE id <> :post_id
+      ORDER BY id
+    SQL
+  end
+
   def unfiltered_posts
     result = filter_post_types(@topic.posts)
     result = result.with_deleted if @guardian.can_see_deleted_posts?(@topic.category)
@@ -969,33 +1074,23 @@ class TopicView
         )
     end
 
+    # Reply history
+    if @reply_history_for.present?
+      post_ids = find_post_replies_ids(@reply_history_for)
+
+      @filtered_posts = @filtered_posts.where("posts.id IN (:post_ids)", post_ids:)
+      @contains_gaps = true
+    end
+
     # Filtering upwards
     if @filter_upwards_post_id.present?
-      post = Post.find(@filter_upwards_post_id)
-      post_ids = DB.query_single(<<~SQL, post_id: post.id, topic_id: post.topic_id)
-      WITH RECURSIVE breadcrumb(id, reply_to_post_number) AS (
-            SELECT p.id, p.reply_to_post_number FROM posts AS p
-              WHERE p.id = :post_id
-            UNION
-              SELECT p.id, p.reply_to_post_number FROM posts AS p, breadcrumb
-                WHERE breadcrumb.reply_to_post_number = p.post_number
-                  AND p.topic_id = :topic_id
-          )
-      SELECT id from breadcrumb
-      WHERE id <> :post_id
-      ORDER by id
-      SQL
-
-      post_ids = (post_ids[(0 - SiteSetting.max_reply_history)..-1] || post_ids)
-      post_ids.push(post.id)
+      post_ids = find_post_replies_ids(@filter_upwards_post_id) | [@filter_upwards_post_id.to_i]
 
       @filtered_posts =
         @filtered_posts.where(
-          "
-        posts.post_number = 1
-        OR posts.id IN (:post_ids)
-        OR posts.id > :max_post_id",
-          { post_ids: post_ids, max_post_id: post_ids.max },
+          "posts.post_number = 1 OR posts.id IN (:post_ids) OR posts.id > :max_post_id",
+          post_ids:,
+          max_post_id: post_ids.max,
         )
 
       @contains_gaps = true
