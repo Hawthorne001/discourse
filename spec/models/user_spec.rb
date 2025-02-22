@@ -129,27 +129,6 @@ RSpec.describe User do
         ) { user.update(name: "Batman") }
       end
     end
-
-    describe "#refresh_user_directory" do
-      context "when bootstrap mode is enabled" do
-        before { SiteSetting.bootstrap_mode_enabled = true }
-
-        it "creates directory items for a new user for all periods" do
-          expect do user = Fabricate(:user) end.to change { DirectoryItem.count }.by(
-            DirectoryItem.period_types.count,
-          )
-          expect(DirectoryItem.where(user_id: user.id)).to exist
-        end
-      end
-
-      context "when bootstrap mode is disabled" do
-        before { SiteSetting.bootstrap_mode_enabled = false }
-
-        it "doesn't create directory items for a new user" do
-          expect do Fabricate(:user) end.not_to change { DirectoryItem.count }
-        end
-      end
-    end
   end
 
   describe "Validations" do
@@ -814,32 +793,32 @@ RSpec.describe User do
   end
 
   describe "email_hash" do
-    before_all { @user = Fabricate(:user) }
+    fab!(:user)
+    fab!(:user2) { Fabricate(:user) }
 
     it "should have a sane email hash" do
-      expect(@user.email_hash).to match(/^[0-9a-f]{32}$/)
+      expect(user.email_hash).to match(/^[0-9a-f]{32}$/)
     end
 
     it "should use downcase email" do
-      @user.email = "example@example.com"
-      @user2 = Fabricate(:user)
-      @user2.email = "ExAmPlE@eXaMpLe.com"
+      user.email = "example@example.com"
+      user2.email = "ExAmPlE@eXaMpLe.com"
 
-      expect(@user.email_hash).to eq(@user2.email_hash)
+      expect(user.email_hash).to eq(user2.email_hash)
     end
 
     it "should trim whitespace before hashing" do
-      @user.email = "example@example.com"
-      @user2 = Fabricate(:user)
-      @user2.email = " example@example.com "
+      user.email = "example@example.com"
+      user2.email = " example@example.com "
 
-      expect(@user.email_hash).to eq(@user2.email_hash)
+      expect(user.email_hash).to eq(user2.email_hash)
     end
   end
 
   describe "associated_accounts" do
+    fab!(:user)
+
     it "should correctly find social associations" do
-      user = Fabricate(:user)
       expect(user.associated_accounts).to eq([])
 
       UserAssociatedAccount.create(
@@ -1002,20 +981,18 @@ RSpec.describe User do
   end
 
   describe "username uniqueness" do
-    before_all do
-      @user = Fabricate.build(:user)
-      @user.save!
-      @codinghorror = Fabricate.build(:coding_horror)
-    end
+    fab!(:user)
+
+    let!(:codinghorror) { Fabricate.build(:coding_horror) }
 
     it "should not allow saving if username is reused" do
-      @codinghorror.username = @user.username
-      expect(@codinghorror.save).to eq(false)
+      codinghorror.username = user.username
+      expect(codinghorror.save).to eq(false)
     end
 
     it "should not allow saving if username is reused in different casing" do
-      @codinghorror.username = @user.username.upcase
-      expect(@codinghorror.save).to eq(false)
+      codinghorror.username = user.username.upcase
+      expect(codinghorror.save).to eq(false)
     end
   end
 
@@ -1096,6 +1073,12 @@ RSpec.describe User do
       expect(User.reserved_username?("Lo\u0308we")).to eq(true) # NFD
       expect(User.reserved_username?("löwe")).to eq(true) # NFC
       expect(User.reserved_username?("käfer")).to eq(true) # NFC
+    end
+
+    it "does not error out when there are no reserved usernames" do
+      SiteSetting.stubs(:reserved_usernames).returns(nil)
+
+      expect { User.username_available?("Foo") }.not_to raise_error
     end
   end
 
@@ -1215,23 +1198,24 @@ RSpec.describe User do
   end
 
   describe "passwords" do
+    let(:user) { Fabricate.build(:user, active: false) }
+
     it "should not have an active account with a good password" do
-      @user = Fabricate.build(:user, active: false)
-      @user.password = "ilovepasta"
-      @user.save!
+      user.password = "ilovepasta"
+      user.save!
 
-      expect(@user.active).to eq(false)
-      expect(@user.confirm_password?("ilovepasta")).to eq(true)
+      expect(user.active).to eq(false)
+      expect(user.confirm_password?("ilovepasta")).to eq(true)
 
-      email_token = Fabricate(:email_token, user: @user, email: "pasta@delicious.com")
+      email_token = Fabricate(:email_token, user:, email: "pasta@delicious.com")
 
-      UserAuthToken.generate!(user_id: @user.id)
+      UserAuthToken.generate!(user_id: user.id)
 
-      @user.password = "passwordT0"
-      @user.save!
+      user.password = "passwordT0"
+      user.save!
 
       # must expire old token on password change
-      expect(@user.user_auth_tokens.count).to eq(0)
+      expect(user.user_auth_tokens.count).to eq(0)
 
       email_token.reload
       expect(email_token.expired).to eq(true)
@@ -1930,7 +1914,7 @@ RSpec.describe User do
   describe "hash_passwords" do
     let(:too_long) { "x" * (User.max_password_length + 1) }
 
-    def hash(password, salt, algorithm = User::TARGET_PASSWORD_ALGORITHM)
+    def hash(password, salt, algorithm = UserPassword::TARGET_PASSWORD_ALGORITHM)
       User.new.send(:hash_password, password, salt, algorithm)
     end
 
@@ -1951,17 +1935,17 @@ RSpec.describe User do
     end
 
     it "uses the target algorithm for new users" do
-      expect(user.password_algorithm).to eq(User::TARGET_PASSWORD_ALGORITHM)
+      expect(user.password_algorithm).to eq(UserPassword::TARGET_PASSWORD_ALGORITHM)
     end
 
     it "can use an older algorithm to verify existing passwords, then upgrade" do
       old_algorithm = "$pbkdf2-sha256$i=5,l=32$"
-      expect(old_algorithm).not_to eq(User::TARGET_PASSWORD_ALGORITHM)
+      expect(old_algorithm).not_to eq(UserPassword::TARGET_PASSWORD_ALGORITHM)
 
       password = "poutine"
       old_hash = hash(password, user.salt, old_algorithm)
 
-      user.update!(password_algorithm: old_algorithm, password_hash: old_hash)
+      user.user_password.update_columns(password_algorithm: old_algorithm, password_hash: old_hash)
 
       expect(user.password_algorithm).to eq(old_algorithm)
       expect(user.password_hash).to eq(old_hash)
@@ -1975,13 +1959,13 @@ RSpec.describe User do
       expect(user.confirm_password?(password)).to eq(true)
 
       # Auto-upgrades to new algorithm
-      expected_new_hash = hash(password, user.salt, User::TARGET_PASSWORD_ALGORITHM)
-      expect(user.password_algorithm).to eq(User::TARGET_PASSWORD_ALGORITHM)
+      expected_new_hash = hash(password, user.salt, UserPassword::TARGET_PASSWORD_ALGORITHM)
+      expect(user.password_algorithm).to eq(UserPassword::TARGET_PASSWORD_ALGORITHM)
       expect(user.password_hash).to eq(expected_new_hash)
 
       # And persists to the db
       user.reload
-      expect(user.password_algorithm).to eq(User::TARGET_PASSWORD_ALGORITHM)
+      expect(user.password_algorithm).to eq(UserPassword::TARGET_PASSWORD_ALGORITHM)
       expect(user.password_hash).to eq(expected_new_hash)
 
       # And can still log in
@@ -2178,10 +2162,12 @@ RSpec.describe User do
       SiteSetting.default_other_notification_level_when_replying = 3 # immediately
       SiteSetting.default_other_external_links_in_new_tab = true
       SiteSetting.default_other_enable_quoting = false
+      SiteSetting.default_other_enable_smart_lists = false
       SiteSetting.default_other_dynamic_favicon = true
       SiteSetting.default_other_skip_new_user_tips = true
 
-      SiteSetting.default_hide_profile_and_presence = true
+      SiteSetting.default_hide_profile = true
+      SiteSetting.default_hide_presence = true
       SiteSetting.default_topics_automatic_unpin = false
 
       SiteSetting.default_categories_watching = category0.id.to_s
@@ -2200,9 +2186,11 @@ RSpec.describe User do
       expect(options.email_messages_level).to eq(UserOption.email_level_types[:never])
       expect(options.external_links_in_new_tab).to eq(true)
       expect(options.enable_quoting).to eq(false)
+      expect(options.enable_smart_lists).to eq(false)
       expect(options.dynamic_favicon).to eq(true)
       expect(options.skip_new_user_tips).to eq(true)
-      expect(options.hide_profile_and_presence).to eq(true)
+      expect(options.hide_profile).to eq(true)
+      expect(options.hide_presence).to eq(true)
       expect(options.automatically_unpin_topics).to eq(false)
       expect(options.new_topic_duration_minutes).to eq(-1)
       expect(options.auto_track_topics_after_msecs).to eq(0)
@@ -3165,12 +3153,30 @@ RSpec.describe User do
   end
 
   describe "#update_ip_address!" do
+    let!(:plugin) { Plugin::Instance.new }
+    let!(:modifier) { :user_can_update_ip_address }
+    let!(:deny_block) { Proc.new { false } }
+    let!(:allow_block) { Proc.new { true } }
+
     it "updates ip_address correctly" do
       expect do user.update_ip_address!("127.0.0.1") end.to change {
         user.reload.ip_address.to_s
       }.to("127.0.0.1")
 
       expect do user.update_ip_address!("127.0.0.1") end.to_not change { user.reload.ip_address }
+    end
+
+    it "allows plugins to control updating ip_address" do
+      DiscoursePluginRegistry.register_modifier(plugin, modifier, &deny_block)
+      expect do user.update_ip_address!("127.0.0.1") end.to_not change { user.reload.ip_address }
+
+      DiscoursePluginRegistry.register_modifier(plugin, modifier, &allow_block)
+      expect do user.update_ip_address!("127.0.0.1") end.to change {
+        user.reload.ip_address.to_s
+      }.to("127.0.0.1")
+    ensure
+      DiscoursePluginRegistry.unregister_modifier(plugin, modifier, &deny_block)
+      DiscoursePluginRegistry.unregister_modifier(plugin, modifier, &allow_block)
     end
 
     describe "keeping old ip address" do
@@ -3410,8 +3416,9 @@ RSpec.describe User do
       user.update!(groups: [group])
       SiteSetting.enable_category_group_moderation = true
 
-      group_reviewable =
-        Fabricate(:reviewable, reviewable_by_moderator: false, reviewable_by_group: group)
+      category = Fabricate(:category)
+      Fabricate(:category_moderation_group, category:, group:)
+      group_reviewable = Fabricate(:reviewable, reviewable_by_moderator: false, category:)
       mod_reviewable = Fabricate(:reviewable, reviewable_by_moderator: true)
       admin_reviewable = Fabricate(:reviewable, reviewable_by_moderator: false)
 
@@ -3569,7 +3576,10 @@ RSpec.describe User do
   end
 
   describe "#populated_required_fields?" do
-    let!(:required_field) { Fabricate(:user_field, name: "hairstyle") }
+    let!(:required_field) do
+      Fabricate(:user_field, name: "hairstyle", requirement: "for_all_users")
+    end
+    let!(:signup_field) { Fabricate(:user_field, name: "haircolor", requirement: "on_signup") }
     let!(:optional_field) { Fabricate(:user_field, name: "haircolor", requirement: "optional") }
 
     context "when all required fields are populated" do
@@ -3606,6 +3616,25 @@ RSpec.describe User do
       expect { user.bump_required_fields_version }.to change { user.required_fields_version }.to(
         version.id,
       )
+    end
+  end
+
+  describe "#similar_users" do
+    fab!(:user2) { Fabricate(:user, ip_address: "1.2.3.4") }
+    fab!(:user3) { Fabricate(:user, ip_address: "1.2.3.4") }
+    fab!(:admin) { Fabricate(:admin, ip_address: "1.2.3.4") }
+    fab!(:moderator) { Fabricate(:moderator, ip_address: "1.2.3.4") }
+
+    before { user.update(ip_address: "1.2.3.4") }
+
+    it "gets users that are not admin, moderator, or current user with the same IP" do
+      expect(user.similar_users).to contain_exactly(user2, user3)
+    end
+
+    it "does not get other users with a null IP if this user has a null IP" do
+      user.update!(ip_address: nil)
+      user2.update!(ip_address: nil)
+      expect(user.similar_users).to eq([])
     end
   end
 end

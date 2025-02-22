@@ -5,25 +5,14 @@ class Admin::SiteSettingsController < Admin::AdminController
     render_json_error e.message, status: 422
   end
 
-  ADMIN_CONFIG_AREA_ALLOWLISTED_HIDDEN_SETTINGS = %i[
-    extended_site_description
-    about_banner_image
-    community_owner
-  ]
-
   def index
     params.permit(:categories, :plugin)
-    params.permit(:filter_names, [])
 
     render_json_dump(
       site_settings:
         SiteSetting.all_settings(
           filter_categories: params[:categories],
           filter_plugin: params[:plugin],
-          filter_names: params[:filter_names],
-          include_locale_setting: params[:filter_names].blank?,
-          include_hidden: true,
-          filter_allowed_hidden: ADMIN_CONFIG_AREA_ALLOWLISTED_HIDDEN_SETTINGS,
         ),
     )
   end
@@ -50,18 +39,20 @@ class Admin::SiteSettingsController < Admin::AdminController
 
     previous_value = value_or_default(SiteSetting.get(id)) if update_existing_users
 
-    with_service(UpdateSiteSetting, setting_name: id, new_value: value) do
-      on_success do
-        value = result.new_value
-        SiteSettingUpdateExistingUsers.call(id, value, previous_value) if update_existing_users
-
+    SiteSetting::Update.call(params: { setting_name: id, new_value: value }, guardian:) do
+      on_success do |params:|
+        if update_existing_users
+          SiteSettingUpdateExistingUsers.call(id, params.new_value, previous_value)
+        end
         render body: nil
       end
-
       on_failed_policy(:setting_is_visible) do
         raise Discourse::InvalidParameters, I18n.t("errors.site_settings.site_setting_is_hidden")
       end
-
+      on_failed_policy(:setting_is_shadowed_globally) do
+        raise Discourse::InvalidParameters,
+              I18n.t("errors.site_settings.site_setting_is_shadowed_globally")
+      end
       on_failed_policy(:setting_is_configurable) do
         raise Discourse::InvalidParameters,
               I18n.t("errors.site_settings.site_setting_is_unconfigurable")

@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
-shared_context "with omniauth setup" do
+shared_context "with omniauth setup" do |signup_page_object, login_page_object|
   include OmniauthHelpers
 
-  let(:login_modal) { PageObjects::Modals::Login.new }
-  let(:signup_modal) { PageObjects::Modals::Signup.new }
+  let(:login_form) { login_page_object }
+  let(:signup_form) { signup_page_object }
 
   before { OmniAuth.config.test_mode = true }
 end
 
-shared_examples "social authentication scenarios" do
-  include_context "with omniauth setup"
+shared_examples "social authentication scenarios" do |signup_page_object, login_page_object|
+  include_context "with omniauth setup", signup_page_object, login_page_object
 
   context "when user does not exist" do
     context "with Facebook" do
@@ -21,13 +21,12 @@ shared_examples "social authentication scenarios" do
         mock_facebook_auth
         visit("/")
 
-        login_modal.open
-        login_modal.click_social_button("facebook")
-        expect(signup_modal).to be_open
-        expect(signup_modal).to have_no_password_input
-        expect(signup_modal).to have_valid_username
-        expect(signup_modal).to have_valid_email
-        signup_modal.click_create_account
+        signup_form.open.click_social_button("facebook")
+        expect(signup_form).to be_open
+        expect(signup_form).to have_no_password_input
+        expect(signup_form).to have_valid_username
+        expect(signup_form).to have_valid_email
+        signup_form.click_create_account
         expect(page).to have_css(".header-dropdown-toggle.current-user")
       end
     end
@@ -40,13 +39,12 @@ shared_examples "social authentication scenarios" do
         mock_google_auth
         visit("/")
 
-        login_modal.open
-        login_modal.click_social_button("google_oauth2")
-        expect(signup_modal).to be_open
-        expect(signup_modal).to have_no_password_input
-        expect(signup_modal).to have_valid_username
-        expect(signup_modal).to have_valid_email
-        signup_modal.click_create_account
+        signup_form.open.click_social_button("google_oauth2")
+        expect(signup_form).to be_open
+        expect(signup_form).to have_no_password_input
+        expect(signup_form).to have_valid_username
+        expect(signup_form).to have_valid_email
+        signup_form.click_create_account
         expect(page).to have_css(".header-dropdown-toggle.current-user")
       end
 
@@ -55,13 +53,12 @@ shared_examples "social authentication scenarios" do
           mock_google_auth(verified: false)
           visit("/")
 
-          login_modal.open
-          login_modal.click_social_button("google_oauth2")
-          expect(signup_modal).to be_open
-          expect(signup_modal).to have_no_password_input
-          expect(signup_modal).to have_valid_username
-          expect(signup_modal).to have_valid_email
-          signup_modal.click_create_account
+          signup_form.open.click_social_button("google_oauth2")
+          expect(signup_form).to be_open
+          expect(signup_form).to have_no_password_input
+          expect(signup_form).to have_valid_username
+          expect(signup_form).to have_valid_email
+          signup_form.click_create_account
           expect(page).to have_css(".account-created")
         end
       end
@@ -75,13 +72,12 @@ shared_examples "social authentication scenarios" do
         mock_github_auth
         visit("/")
 
-        login_modal.open
-        login_modal.click_social_button("github")
-        expect(signup_modal).to be_open
-        expect(signup_modal).to have_no_password_input
-        expect(signup_modal).to have_valid_username
-        expect(signup_modal).to have_valid_email
-        signup_modal.click_create_account
+        signup_form.open.click_social_button("github")
+        expect(signup_form).to be_open
+        expect(signup_form).to have_no_password_input
+        expect(signup_form).to have_valid_username
+        expect(signup_form).to have_valid_email
+        signup_form.click_create_account
         expect(page).to have_css(".header-dropdown-toggle.current-user")
       end
 
@@ -90,13 +86,12 @@ shared_examples "social authentication scenarios" do
           mock_github_auth(verified: false)
           visit("/")
 
-          login_modal.open
-          login_modal.click_social_button("github")
-          expect(signup_modal).to be_open
-          expect(signup_modal).to have_no_password_input
-          expect(signup_modal).to have_valid_username
-          expect(signup_modal).to have_valid_email
-          signup_modal.click_create_account
+          signup_form.open.click_social_button("github")
+          expect(signup_form).to be_open
+          expect(signup_form).to have_no_password_input
+          expect(signup_form).to have_valid_username
+          expect(signup_form).to have_valid_email
+          signup_form.click_create_account
           expect(page).to have_css(".account-created")
         end
       end
@@ -110,14 +105,13 @@ shared_examples "social authentication scenarios" do
         mock_twitter_auth
         visit("/")
 
-        login_modal.open
-        login_modal.click_social_button("twitter")
-        expect(signup_modal).to be_open
-        expect(signup_modal).to have_no_password_input
-        signup_modal.fill_email(OmniauthHelpers::EMAIL)
-        expect(signup_modal).to have_valid_username
-        expect(signup_modal).to have_valid_email
-        signup_modal.click_create_account
+        signup_form.open.click_social_button("twitter")
+        expect(signup_form).to be_open
+        expect(signup_form).to have_no_password_input
+        signup_form.fill_email(OmniauthHelpers::EMAIL)
+        expect(signup_form).to have_valid_username
+        expect(signup_form).to have_valid_email
+        signup_form.click_create_account
         expect(page).to have_css(".account-created")
       end
 
@@ -126,14 +120,13 @@ shared_examples "social authentication scenarios" do
           mock_twitter_auth(verified: false)
           visit("/")
 
-          login_modal.open
-          login_modal.click_social_button("twitter")
-          expect(signup_modal).to be_open
-          expect(signup_modal).to have_no_password_input
-          signup_modal.fill_email(OmniauthHelpers::EMAIL)
-          expect(signup_modal).to have_valid_username
-          expect(signup_modal).to have_valid_email
-          signup_modal.click_create_account
+          signup_form.open.click_social_button("twitter")
+          expect(signup_form).to be_open
+          expect(signup_form).to have_no_password_input
+          signup_form.fill_email(OmniauthHelpers::EMAIL)
+          expect(signup_form).to have_valid_username
+          expect(signup_form).to have_valid_email
+          signup_form.click_create_account
           expect(page).to have_css(".account-created")
         end
       end
@@ -147,13 +140,12 @@ shared_examples "social authentication scenarios" do
         mock_discord_auth
         visit("/")
 
-        login_modal.open
-        login_modal.click_social_button("discord")
-        expect(signup_modal).to be_open
-        expect(signup_modal).to have_no_password_input
-        expect(signup_modal).to have_valid_username
-        expect(signup_modal).to have_valid_email
-        signup_modal.click_create_account
+        signup_form.open.click_social_button("discord")
+        expect(signup_form).to be_open
+        expect(signup_form).to have_no_password_input
+        expect(signup_form).to have_valid_username
+        expect(signup_form).to have_valid_email
+        signup_form.click_create_account
         expect(page).to have_css(".header-dropdown-toggle.current-user")
       end
     end
@@ -170,13 +162,190 @@ shared_examples "social authentication scenarios" do
         mock_linkedin_auth
         visit("/")
 
-        login_modal.open
-        login_modal.click_social_button("linkedin_oidc")
-        expect(signup_modal).to be_open
-        expect(signup_modal).to have_no_password_input
-        expect(signup_modal).to have_valid_username
-        expect(signup_modal).to have_valid_email
-        signup_modal.click_create_account
+        signup_form.open.click_social_button("linkedin_oidc")
+        expect(signup_form).to be_open
+        expect(signup_form).to have_no_password_input
+        expect(signup_form).to have_valid_username
+        expect(signup_form).to have_valid_email
+        signup_form.click_create_account
+        expect(page).to have_css(".header-dropdown-toggle.current-user")
+      end
+    end
+
+    # These tests use Google, but they should be the same for all providers
+
+    context "when opening the external auth from /login" do
+      before { SiteSetting.enable_google_oauth2_logins = true }
+      after { reset_omniauth_config(:google_oauth2) }
+
+      it "fills the signup form" do
+        mock_google_auth
+        visit("/")
+
+        signup_form.open.click_social_button("google_oauth2")
+        expect(signup_form).to be_open
+        expect(signup_form).to have_no_password_input
+        expect(signup_form).to have_valid_username
+        expect(signup_form).to have_valid_email
+        signup_form.click_create_account
+        expect(page).to have_css(".header-dropdown-toggle.current-user")
+      end
+    end
+
+    context "when overriding local fields" do
+      before do
+        SiteSetting.enable_google_oauth2_logins = true
+        SiteSetting.auth_overrides_name = true
+        SiteSetting.auth_overrides_username = true
+      end
+      after { reset_omniauth_config(:google_oauth2) }
+
+      it "fills the signup form and disables the inputs" do
+        mock_google_auth
+        visit("/")
+
+        signup_form.open.click_social_button("google_oauth2")
+        expect(signup_form).to be_open
+        expect(signup_form).to have_no_password_input
+        expect(signup_form).to have_valid_username
+        expect(signup_form).to have_valid_email
+        expect(signup_form).to have_disabled_username
+        expect(signup_form).to have_disabled_email
+        expect(signup_form).to have_disabled_name
+        signup_form.click_create_account
+        expect(page).to have_css(".header-dropdown-toggle.current-user")
+      end
+    end
+
+    context "when skipping the signup form" do
+      before do
+        SiteSetting.enable_google_oauth2_logins = true
+        SiteSetting.auth_skip_create_confirm = true
+      end
+      after { reset_omniauth_config(:google_oauth2) }
+
+      it "creates the account directly" do
+        mock_google_auth
+        visit("/")
+
+        signup_form.open.click_social_button("google_oauth2")
+        expect(page).to have_css(".header-dropdown-toggle.current-user")
+      end
+    end
+
+    context "when there is only one external login method enabled" do
+      before do
+        SiteSetting.enable_google_oauth2_logins = true
+        SiteSetting.enable_local_logins = false
+      end
+      after { reset_omniauth_config(:google_oauth2) }
+
+      context "when login is required" do
+        before { SiteSetting.login_required = true }
+
+        it "automatically redirects when auth_immediately is enabled" do
+          SiteSetting.auth_immediately = true
+          mock_google_auth
+
+          visit("/login")
+          expect(signup_form).to be_open
+          expect(signup_form).to have_no_password_input
+          expect(signup_form).to have_valid_username
+          expect(signup_form).to have_valid_email
+
+          visit("/signup")
+          expect(signup_form).to be_open
+          expect(signup_form).to have_no_password_input
+          expect(signup_form).to have_valid_username
+          expect(signup_form).to have_valid_email
+
+          visit("/")
+          expect(signup_form).to be_open
+          expect(signup_form).to have_no_password_input
+          expect(signup_form).to have_valid_username
+          expect(signup_form).to have_valid_email
+          signup_form.click_create_account
+          expect(page).to have_css(".header-dropdown-toggle.current-user")
+        end
+
+        it "shows the login-required page when auth_immediately is disabled" do
+          SiteSetting.auth_immediately = false
+          mock_google_auth
+
+          visit("/login")
+          expect(page).to have_css(".login-welcome")
+          expect(page).to have_css(".site-logo")
+
+          visit("/")
+          expect(page).to have_css(".login-welcome")
+          expect(page).to have_css(".site-logo")
+
+          find(".login-welcome .login-button").click
+          expect(signup_form).to be_open
+
+          visit("/")
+          find(".login-welcome .sign-up-button").click
+          expect(signup_form).to be_open
+          expect(signup_form).to have_no_password_input
+          expect(signup_form).to have_valid_username
+          expect(signup_form).to have_valid_email
+          signup_form.click_create_account
+          expect(page).to have_css(".header-dropdown-toggle.current-user")
+        end
+
+        it "automatically redirects when going to /signup" do
+          SiteSetting.auth_immediately = false
+          mock_google_auth
+
+          visit("/signup")
+          expect(signup_form).to be_open
+          expect(signup_form).to have_no_password_input
+          expect(signup_form).to have_valid_username
+          expect(signup_form).to have_valid_email
+          signup_form.click_create_account
+          expect(page).to have_css(".header-dropdown-toggle.current-user")
+        end
+
+        it "automatically redirects when skipping the signup form" do
+          SiteSetting.auth_skip_create_confirm = true
+          SiteSetting.auth_immediately = true
+          mock_google_auth
+
+          visit("/login")
+          expect(page).to have_css(".header-dropdown-toggle.current-user")
+        end
+      end
+
+      it "automatically redirects when using the login button" do
+        SiteSetting.auth_immediately = false
+        mock_google_auth
+
+        visit("/")
+        find(".header-buttons .login-button").click
+        expect(signup_form).to be_open
+        expect(signup_form).to have_no_password_input
+        expect(signup_form).to have_valid_username
+        expect(signup_form).to have_valid_email
+        signup_form.click_create_account
+        expect(page).to have_css(".header-dropdown-toggle.current-user")
+      end
+
+      it "automatically redirects when using the routes" do
+        SiteSetting.auth_immediately = false
+        mock_google_auth
+
+        visit("/login")
+        expect(signup_form).to be_open
+        expect(signup_form).to have_no_password_input
+        expect(signup_form).to have_valid_username
+        expect(signup_form).to have_valid_email
+
+        visit("/signup")
+        expect(signup_form).to be_open
+        expect(signup_form).to have_no_password_input
+        expect(signup_form).to have_valid_username
+        expect(signup_form).to have_valid_email
+        signup_form.click_create_account
         expect(page).to have_css(".header-dropdown-toggle.current-user")
       end
     end
@@ -200,8 +369,7 @@ shared_examples "social authentication scenarios" do
         mock_facebook_auth
         visit("/")
 
-        login_modal.open
-        login_modal.click_social_button("facebook")
+        signup_form.open.click_social_button("facebook")
         expect(page).to have_css(".header-dropdown-toggle.current-user")
       end
     end
@@ -214,8 +382,7 @@ shared_examples "social authentication scenarios" do
         mock_google_auth
         visit("/")
 
-        login_modal.open
-        login_modal.click_social_button("google_oauth2")
+        signup_form.open.click_social_button("google_oauth2")
         expect(page).to have_css(".header-dropdown-toggle.current-user")
       end
     end
@@ -228,8 +395,7 @@ shared_examples "social authentication scenarios" do
         mock_github_auth
         visit("/")
 
-        login_modal.open
-        login_modal.click_social_button("github")
+        signup_form.open.click_social_button("github")
         expect(page).to have_css(".header-dropdown-toggle.current-user")
       end
     end
@@ -248,8 +414,7 @@ shared_examples "social authentication scenarios" do
         mock_twitter_auth
         visit("/")
 
-        login_modal.open
-        login_modal.click_social_button("twitter")
+        signup_form.open.click_social_button("twitter")
         expect(page).to have_css(".header-dropdown-toggle.current-user")
       end
     end
@@ -262,8 +427,7 @@ shared_examples "social authentication scenarios" do
         mock_discord_auth
         visit("/")
 
-        login_modal.open
-        login_modal.click_social_button("discord")
+        signup_form.open.click_social_button("discord")
         expect(page).to have_css(".header-dropdown-toggle.current-user")
       end
     end
@@ -280,8 +444,7 @@ shared_examples "social authentication scenarios" do
         mock_linkedin_auth
         visit("/")
 
-        login_modal.open
-        login_modal.click_social_button("linkedin_oidc")
+        signup_form.open.click_social_button("linkedin_oidc")
         expect(page).to have_css(".header-dropdown-toggle.current-user")
       end
     end
@@ -289,11 +452,31 @@ shared_examples "social authentication scenarios" do
 end
 
 describe "Social authentication", type: :system do
+  before { SiteSetting.full_name_requirement = "optional_at_signup" }
+
   context "when desktop" do
-    include_examples "social authentication scenarios"
+    include_examples "social authentication scenarios",
+                     PageObjects::Modals::Signup.new,
+                     PageObjects::Modals::Login.new
   end
 
   context "when mobile", mobile: true do
-    include_examples "social authentication scenarios"
+    include_examples "social authentication scenarios",
+                     PageObjects::Modals::Signup.new,
+                     PageObjects::Modals::Login.new
+  end
+
+  context "when fullpage desktop" do
+    before { SiteSetting.full_page_login = true }
+    include_examples "social authentication scenarios",
+                     PageObjects::Pages::Signup.new,
+                     PageObjects::Pages::Login.new
+  end
+
+  context "when fullpage mobile", mobile: true do
+    before { SiteSetting.full_page_login = true }
+    include_examples "social authentication scenarios",
+                     PageObjects::Pages::Signup.new,
+                     PageObjects::Pages::Login.new
   end
 end

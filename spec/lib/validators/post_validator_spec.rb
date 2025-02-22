@@ -46,7 +46,7 @@ RSpec.describe PostValidator do
     end
   end
 
-  describe "stripped_length" do
+  describe "#stripped_length" do
     it "adds an error for short raw" do
       post.raw = "abc"
       validator.stripped_length(post)
@@ -102,6 +102,26 @@ RSpec.describe PostValidator do
       post.raw = "<!-- <!-- an html comment --> -->"
       validator.stripped_length(post)
       expect(post.errors.count).to eq(1)
+    end
+
+    context "when configured to count uploads" do
+      before { SiteSetting.prevent_uploads_only_posts = false }
+
+      it "counts image tags" do
+        post.raw = "![A cute cat|690x472](upload://3NvZqZ2iBHjDjwNVI4QyZpkaC5r.png)"
+        validator.stripped_length(post)
+        expect(post.errors.count).to eq(0)
+      end
+    end
+
+    context "when configured to not count uploads" do
+      before { SiteSetting.prevent_uploads_only_posts = true }
+
+      it "doesn't count image tags" do
+        post.raw = "![A cute cat|690x472](upload://3NvZqZ2iBHjDjwNVI4QyZpkaC5r.png)"
+        validator.stripped_length(post)
+        expect(post.errors.count).to eq(1)
+      end
     end
   end
 
@@ -386,7 +406,8 @@ RSpec.describe PostValidator do
       SiteSetting.enable_category_group_moderation = true
       group = Fabricate(:group)
       GroupUser.create(group: group, user: user)
-      category = Fabricate(:category, reviewable_by_group_id: group.id)
+      category = Fabricate(:category)
+      Fabricate(:category_moderation_group, category:, group:)
       topic.update!(category: category)
 
       Post.create!(user: other_user, topic: topic, raw: "post number 1", post_number: 1)

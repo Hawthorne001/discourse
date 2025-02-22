@@ -13,42 +13,36 @@ RSpec.describe Post do
 
   describe "#hidden_reasons" do
     context "when verifying enum sequence" do
-      before { @hidden_reasons = Post.hidden_reasons }
-
       it "'flag_threshold_reached' should be at 1st position" do
-        expect(@hidden_reasons[:flag_threshold_reached]).to eq(1)
+        expect(described_class.hidden_reasons[:flag_threshold_reached]).to eq(1)
       end
 
       it "'flagged_by_tl3_user' should be at 4th position" do
-        expect(@hidden_reasons[:flagged_by_tl3_user]).to eq(4)
+        expect(described_class.hidden_reasons[:flagged_by_tl3_user]).to eq(4)
       end
     end
   end
 
   describe "#types" do
     context "when verifying enum sequence" do
-      before { @types = Post.types }
-
       it "'regular' should be at 1st position" do
-        expect(@types[:regular]).to eq(1)
+        expect(described_class.types[:regular]).to eq(1)
       end
 
       it "'whisper' should be at 4th position" do
-        expect(@types[:whisper]).to eq(4)
+        expect(described_class.types[:whisper]).to eq(4)
       end
     end
   end
 
   describe "#cook_methods" do
     context "when verifying enum sequence" do
-      before { @cook_methods = Post.cook_methods }
-
       it "'regular' should be at 1st position" do
-        expect(@cook_methods[:regular]).to eq(1)
+        expect(described_class.cook_methods[:regular]).to eq(1)
       end
 
       it "'email' should be at 3rd position" do
-        expect(@cook_methods[:email]).to eq(3)
+        expect(described_class.cook_methods[:email]).to eq(3)
       end
     end
   end
@@ -1027,20 +1021,6 @@ RSpec.describe Post do
     end
   end
 
-  describe "reply_history" do
-    let!(:p1) { Fabricate(:post, post_args) }
-    let!(:p2) { Fabricate(:post, post_args.merge(reply_to_post_number: p1.post_number)) }
-    let!(:p3) { Fabricate(:post, post_args) }
-    let!(:p4) { Fabricate(:post, post_args.merge(reply_to_post_number: p2.post_number)) }
-
-    it "returns the posts in reply to this post" do
-      expect(p4.reply_history).to eq([p1, p2])
-      expect(p4.reply_history(1)).to eq([p2])
-      expect(p3.reply_history).to be_blank
-      expect(p2.reply_history).to eq([p1])
-    end
-  end
-
   describe "reply_ids" do
     fab!(:topic)
     let!(:p1) { Fabricate(:post, topic: topic, post_number: 1) }
@@ -1510,6 +1490,19 @@ RSpec.describe Post do
       expect { post.hide!(PostActionType.types[:off_topic]) }.to change { post.reload.hidden }.from(
         false,
       ).to(true)
+    end
+
+    it "should inform the user when custom flag" do
+      custom_flag = Fabricate(:flag, name: "custom flag")
+      post.hide!(PostActionType.types[:custom_custom_flag])
+
+      jobs = Jobs::SendSystemMessage.jobs
+      expect(jobs.size).to eq(1)
+
+      Jobs::SendSystemMessage.new.execute(jobs[0]["args"][0].with_indifferent_access)
+      expect(Post.last.raw).to match("custom flag")
+
+      custom_flag.destroy!
     end
 
     it "should decrease user_stat topic_count for first post" do

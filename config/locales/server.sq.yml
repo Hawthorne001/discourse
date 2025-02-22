@@ -41,22 +41,38 @@ sq:
   posts: "postime"
   views: "shikime"
   loading: "Loading"
+  powered_by_html: 'Mundësuar nga <a href="https://www.discourse.org">Discourse</a>, shikohet më së miri me JavaScript të aktivizuar'
   sign_up: "Regjistrohu"
   log_in: "Identifikohu"
   purge_reason: "Automatically deleted as abandoned, deactivated account"
   disable_remote_images_download_reason: "Remote images download was disabled because there wasn't enough disk space available."
   anonymous: "Anonim"
   remove_posts_deleted_by_author: "Fshirë nga autori"
+  redirect_warning: "Ne nuk ishim në gjendje të verifikonim që linku që zgjodhët ishte postuar në të vërtetë në forum. Nëse dëshironi të vazhdoni gjithsesi, zgjidhni linkun më poshtë."
+  topic_category_changed: "Nga %{from} në %{to}"
+  topic_tag_changed:
+    added_and_removed: "U shtua %{added} dhe u hoq %{removed}"
   inline_oneboxer:
     topic_page_title_post_number_by_user: "#%{post_number} nga %{username}"
   components:
     enabled_filter: "Aktivizuar"
   themes:
+    bad_color_scheme: "Tema nuk mund të përditësohet, paleta e pavlefshme e ngjyrave"
+    other_error: "Ndodhi një gabim me përditësimin e temës"
+    ember_selector_error: "Ndodhi një gabim – përdorimi i përzgjedhësve CSS #ember ose .ember-view nuk lejohet, sepse këta emra gjenerohen në mënyrë të shpejtë në kohën e zbatimti dhe do të ndryshojnë me kalimin e kohës, duke rezultuar në CSS të anulluar. Provoni një përzgjedhës tjetër."
+    import_error:
+      generic: Ndodhi një gabim gjatë përcjelljes të kësaj teme
+      upload: "Gabim në ngarkim e sipër: %{name}. %{errors}"
+      screenshot_invalid_size: "Kopjet e temës duhet të jenë më pak se %{max_size}. Kopja %{file_name} është shumë e madhe."
+      screenshot_invalid_dimensions: "Kopjet e temës duhet të jenë maksimale %{max_width}x%{max_height}. Kopja %{file_name} e tejkalon këtë. Dimensionet janë %{width}x%{height}."
+      about_json: "Gabim transferimi: about.json nuk ekziston, ose është i pavlefshëm. Jeni i sigurt se kjo është një temë diskutimi?"
+      unpack_failed: "Hapja e dosjes dështoi"
     settings_errors:
       number_value_not_valid_min_max: "Value must be between %{min} and %{max}."
       objects:
         required: "must be present"
         not_valid_integer_value: "must be an integer"
+        humanize_not_valid_categories_value: "Veçoria në JSON Pointer '%{property_json_pointer}' duhet të jetë një grup id i kategorive të vlefshme."
   emails:
     incoming:
       default_subject: "Duhet të shkruani titullin"
@@ -189,6 +205,8 @@ sq:
         bio_raw: "Rreth Meje"
       user:
         password: "Fjalëkalimi"
+      user_password:
+        password: "Fjalëkalimi"
     errors:
       models:
         topic:
@@ -205,6 +223,12 @@ sq:
             ip_address:
               blocked: "New registrations are not allowed from your IP address."
               max_new_accounts_per_registration_ip: "New registrations are not allowed from your IP address (maximum limit reached). Contact a staff member."
+        user_password:
+          attributes:
+            password:
+              common: "është një ndër 10000 fjalëkalimet më të përdorur. Ju ftojmë të përdorni një më të sigurtë."
+              same_as_username: "is the same as your username. Please use a more secure password."
+              same_as_email: "is the same as your email. Please use a more secure password."
         color_scheme_color:
           attributes:
             hex:
@@ -316,11 +340,7 @@ sq:
     error: "Hasëm një gabim gjatë ndryshimit të adresës email. Mos vallë është në përdorim nga një llogari tjetër në faqe?"
     already_done: "Na vjen keq, ky link nuk vlen më. Mbase adresa juaj email u ndryshua para pak kohësh?"
   activation:
-    action: "Klikoni këtu për të aktivizuar llogarinë tuaj"
     already_done: "Na vjen keq, ky link nuk vlen më. Mbase llogaria është që tani e aktivizuar?"
-    please_continue: "Llogaria juaj e re u konfirumua; ju po ridrejtoheni për tek faqja kryesore."
-    continue_button: "Vazhdo tek %{site_name}"
-    welcome_to: "Mirë se vini tek %{site_name}!"
     approval_required: "A moderator must manually approve your new account before you can access this forum. You'll get an email when your account is approved!"
   reviewable_score_types:
     needs_approval:
@@ -443,6 +463,8 @@ sq:
       yaxis: "Dit"
     consolidated_page_views_browser_detection:
       yaxis: "Dit"
+    site_traffic:
+      yaxis: "Dit"
     dau_by_mau:
       xaxis: "Day"
     daily_engaged_users:
@@ -543,6 +565,8 @@ sq:
       xaxis: "Day"
     page_view_total_reqs:
       xaxis: "Day"
+    page_view_legacy_total_reqs:
+      xaxis: "Dit"
     page_view_logged_in_mobile_reqs:
       xaxis: "Ditë"
     page_view_anon_mobile_reqs:
@@ -662,9 +686,7 @@ sq:
     tl4_additional_likes_per_day_multiplier: "Increase limit of likes per day for tl4 (leader) by multiplying with this number"
     traditional_markdown_linebreaks: "Use traditional linebreaks in Markdown, which require two trailing spaces for a linebreak."
     post_undo_action_window_mins: "Number of minutes users are allowed to undo recent actions on a post (like, flag, etc)."
-    must_approve_users: "Staff must approve all new user accounts before they are allowed to access the site."
     cors_origins: "Allowed origins for cross-origin requests (CORS). Each origin must include http:// or https://. The DISCOURSE_ENABLE_CORS env variable must be set to true to enable CORS."
-    post_menu_hidden_items: "The menu items to hide by default in the post menu unless an expansion ellipsis is clicked on."
     share_links: "Determine which items appear on the share dialog, and in what order."
     site_contact_username: "A valid staff username to send all automated messages from. If left blank the default System account will be used."
     send_welcome_message: "Send all new users a welcome message with a quick start guide."
@@ -674,7 +696,6 @@ sq:
     max_reply_history: "Maximum number of replies to expand when expanding in-reply-to"
     topics_per_period_in_top_summary: "Number of top topics shown in the default top topics summary."
     topics_per_period_in_top_page: "Number of top topics shown on the expanded 'Show More' top topics."
-    redirect_users_to_top_page: "Automatically redirect new and long absent users to the top page."
     email_token_valid_hours: "Forgot password / activate account tokens are valid for (n) hours."
     log_out_strict: "When logging out, log out ALL sessions for the user on all devices"
     new_version_emails: "Send an email to the contact_email address when a new version of Discourse is available."
@@ -792,7 +813,6 @@ sq:
     disable_system_edit_notifications: "Disables edit notifications by the system user when 'download_remote_images_to_local' is active."
     automatically_unpin_topics: "Çngjiti temat automatikisht kur përdoruesi arrin fundin e faqes."
     read_time_word_count: "Numërimi i fjalëve për minutë për të llogaritur kohën e vlerësuar të leximit."
-    full_name_required: "Full name is a required field of a user's profile."
     enable_names: "Show the user's full name on their profile, user card, and emails. Disable to hide full name everywhere."
     display_name_on_posts: "Show a user's full name on their posts in addition to their @username."
     show_time_gap_days: "If two posts are made this many days apart, display the time gap in the topic."
@@ -1379,12 +1399,8 @@ sq:
             label: "Parashikimi"
           homepage_style:
             choices:
-              categories_only:
-                label: "Vetëm kategoritë"
-              categories_with_featured_topics:
-                label: "Kategoritë dhe temat e zgjedhura"
-              categories_and_latest_topics:
-                label: "Kategoritë dhe temat e fundit"
+              latest:
+                label: "Më të fundit"
   discourse_push_notifications:
     popup:
       mentioned: '%{username} ju përmendi në "%{topic}" - %{site_title}'

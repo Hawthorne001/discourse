@@ -1,44 +1,48 @@
 # frozen_string_literal: true
+require_relative "deprecated_icon_handler"
 
 module SvgSprite
-  SVG_ICONS ||=
+  SVG_ICONS =
     Set.new(
       %w[
-        adjust
+        a
         address-book
         align-left
-        ambulance
         anchor
-        angle-double-down
-        angle-double-up
-        angle-double-right
-        angle-double-left
         angle-down
         angle-right
         angle-up
-        archive
+        angles-down
+        angles-left
+        angles-right
+        angles-up
         arrow-down
         arrow-left
         arrow-right
+        arrow-rotate-left
+        arrow-rotate-right
         arrow-up
-        arrows-alt-h
-        arrows-alt-v
-        at
+        arrows-rotate
         asterisk
+        at
         backward
+        backward-fast
+        backward-step
         ban
         bars
+        bars-staggered
         bed
         bell
         bell-slash
         bold
         book
-        book-reader
+        book-open-reader
         bookmark
         bookmark-delete
+        box-archive
         briefcase
         bullseye
-        calendar-alt
+        calendar-days
         caret-down
         caret-left
         caret-right
@@ -47,211 +51,213 @@ module SvgSprite
         chart-bar
         chart-pie
         check
-        check-circle
-        check-square
-        chevron-circle-down
         chevron-down
         chevron-left
         chevron-right
         chevron-up
         circle
-        cloud-upload-alt
+        circle-check
+        circle-chevron-down
+        circle-exclamation
+        circle-half-stroke
+        circle-info
+        circle-minus
+        circle-plus
+        circle-question
+        circle-xmark
+        clock
+        clock-rotate-left
+        cloud-arrow-up
         code
-        cog
-        columns
         comment
         compress
         copy
         crosshairs
         cube
         desktop
+        diagram-project
         discourse-amazon
         discourse-bell-exclamation
         discourse-bell-one
         discourse-bell-slash
         discourse-bookmark-clock
+        discourse-chevron-collapse
+        discourse-chevron-expand
         discourse-compress
         discourse-dnd
         discourse-emojis
         discourse-expand
         discourse-other-tab
+        discourse-sidebar
         discourse-sparkles
         discourse-threads
-        discourse-sidebar
-        discourse-chevron-collapse
-        discourse-chevron-expand
         download
-        ellipsis-h
-        ellipsis-v
+        earth-americas
+        ellipsis
+        ellipsis-vertical
         envelope
-        envelope-square
-        exchange-alt
-        exclamation-circle
-        exclamation-triangle
-        external-link-alt
         eye
         fab-android
         fab-apple
         fab-chrome
         fab-discord
         fab-discourse
-        fab-facebook-square
         fab-facebook
+        fab-facebook-square
         fab-github
         fab-instagram
         fab-linkedin-in
         fab-linux
+        fab-markdown
         fab-threads
         fab-threads-square
         fab-twitter
         fab-twitter-square
+        fab-x-twitter
         fab-wikipedia-w
         fab-windows
         far-bell
         far-bell-slash
         far-calendar-plus
         far-chart-bar
-        far-check-square
         far-circle
+        far-circle-dot
         far-clipboard
         far-clock
         far-comment
         far-comments
         far-copyright
-        far-dot-circle
-        far-edit
         far-envelope
         far-eye
         far-eye-slash
-        far-file-alt
-        far-frown
+        far-face-frown
+        far-face-meh
+        far-face-smile
+        far-file-lines
         far-heart
         far-image
-        far-list-alt
-        far-meh
         far-moon
-        far-smile
+        far-pen-to-square
+        far-rectangle-list
         far-square
+        far-square-check
         far-star
         far-sun
         far-thumbs-down
         far-thumbs-up
-        far-trash-alt
-        fast-backward
-        fast-forward
+        far-trash-can
         file
-        file-alt
+        file-lines
         filter
         flag
+        flask
         folder
         folder-open
         forward
+        forward-fast
+        forward-step
         gavel
+        gear
         gift
         globe
-        globe-americas
         grip-lines
         hand-point-right
-        hands-helping
+        handshake-angle
         heart
-        history
-        home
         hourglass-start
+        house
         id-card
         image
         images
         inbox
-        info-circle
         italic
         key
         keyboard
         language
         layer-group
+        left-right
         link
+        link-slash
         list
+        list-check
         list-ol
         list-ul
+        location-dot
         lock
-        magic
-        map-marker-alt
+        magnifying-glass
+        magnifying-glass-minus
+        magnifying-glass-plus
         microphone-slash
         minus
-        minus-circle
-        mobile-alt
+        mobile-screen-button
         moon
-        paint-brush
+        paintbrush
         palette
         paper-plane
         pause
-        pencil-alt
+        pencil
         play
         plug
         plus
-        plus-circle
-        plus-square
         power-off
-        project-diagram
         puzzle-piece
         question
-        question-circle
         quote-left
         quote-right
-        random
-        redo
         reply
+        right-from-bracket
+        right-left
+        right-to-bracket
         robot
         rocket
-        search
-        search-plus
-        search-minus
+        rotate
+        scroll
         share
-        shield-alt
-        sign-in-alt
-        sign-out-alt
+        shield-halved
+        shuffle
         signal
-        sliders-h
+        sliders
+        spinner
+        square-check
+        square-envelope
         square-full
+        square-plus
         star
-        step-backward
-        step-forward
-        stream
-        sync-alt
-        sync
+        sun
         table
+        table-cells
+        table-columns
         tag
         tags
-        tasks
-        th
-        thermometer-three-quarters
+        temperature-three-quarters
         thumbs-down
         thumbs-up
         thumbtack
-        times
-        times-circle
+        tippy-rounded-arrow
         toggle-off
         toggle-on
-        trash-alt
-        undo
-        unlink
+        trash-can
+        triangle-exclamation
+        truck-medical
         unlock
-        unlock-alt
+        unlock-keyhole
+        up-down
+        up-right-from-square
         upload
         user
-        user-cog
-        user-edit
-        user-friends
+        user-gear
+        user-group
+        user-pen
         user-plus
         user-secret
         user-shield
-        user-times
+        user-xmark
         users
+        wand-magic
         wrench
-        spinner
-        tippy-rounded-arrow
+        xmark
       ],
     )
-
-  FA_ICON_MAP = { "far fa-" => "far-", "fab fa-" => "fab-", "fas fa-" => "", "fa-" => "" }
 
   CORE_SVG_SPRITES = Dir.glob("#{Rails.root}/vendor/assets/svg-icons/**/*.svg")
 
@@ -424,12 +430,10 @@ License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL
   end
 
   def self.icon_picker_search(keyword, only_available = false)
-    icons = all_icons(SiteSetting.default_theme_id) if only_available
-
     symbols = svgs_for(SiteSetting.default_theme_id)
-    symbols.slice!(*icons) if only_available
-    symbols.reject! { |icon_id, sym| !icon_id.include?(keyword) } unless keyword.empty?
-    symbols.sort_by(&:first).map { |icon_id, symbol| { id: icon_id, symbol: symbol } }
+    symbols.slice!(*all_icons(SiteSetting.default_theme_id)) if only_available
+    symbols.reject! { |icon_id, _sym| !icon_id.include?(keyword) } if keyword.present?
+    symbols.sort_by(&:first).map { |id, symbol| { id:, symbol: } }
   end
 
   # For use in no_ember .html.erb layouts
@@ -516,9 +520,7 @@ License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL
   end
 
   def self.process(icon_name)
-    icon_name = icon_name.strip
-    FA_ICON_MAP.each { |k, v| icon_name = icon_name.sub(k, v) }
-    icon_name
+    DeprecatedIconHandler.convert_icon(icon_name.strip)
   end
 
   def self.get_set_cache(key, &block)

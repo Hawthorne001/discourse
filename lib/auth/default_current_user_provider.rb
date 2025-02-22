@@ -23,28 +23,28 @@ require_relative "../route_matcher"
 # We'll drop support for v0 after Discourse 2.9 is released.
 
 class Auth::DefaultCurrentUserProvider
-  CURRENT_USER_KEY ||= "_DISCOURSE_CURRENT_USER"
-  USER_TOKEN_KEY ||= "_DISCOURSE_USER_TOKEN"
-  API_KEY ||= "api_key"
-  API_USERNAME ||= "api_username"
-  HEADER_API_KEY ||= "HTTP_API_KEY"
-  HEADER_API_USERNAME ||= "HTTP_API_USERNAME"
-  HEADER_API_USER_EXTERNAL_ID ||= "HTTP_API_USER_EXTERNAL_ID"
-  HEADER_API_USER_ID ||= "HTTP_API_USER_ID"
-  PARAMETER_USER_API_KEY ||= "user_api_key"
-  USER_API_KEY ||= "HTTP_USER_API_KEY"
-  USER_API_CLIENT_ID ||= "HTTP_USER_API_CLIENT_ID"
-  API_KEY_ENV ||= "_DISCOURSE_API"
-  USER_API_KEY_ENV ||= "_DISCOURSE_USER_API"
-  TOKEN_COOKIE ||= ENV["DISCOURSE_TOKEN_COOKIE"] || "_t"
-  PATH_INFO ||= "PATH_INFO"
-  COOKIE_ATTEMPTS_PER_MIN ||= 10
-  BAD_TOKEN ||= "_DISCOURSE_BAD_TOKEN"
+  CURRENT_USER_KEY = "_DISCOURSE_CURRENT_USER"
+  USER_TOKEN_KEY = "_DISCOURSE_USER_TOKEN"
+  API_KEY = "api_key"
+  API_USERNAME = "api_username"
+  HEADER_API_KEY = "HTTP_API_KEY"
+  HEADER_API_USERNAME = "HTTP_API_USERNAME"
+  HEADER_API_USER_EXTERNAL_ID = "HTTP_API_USER_EXTERNAL_ID"
+  HEADER_API_USER_ID = "HTTP_API_USER_ID"
+  PARAMETER_USER_API_KEY = "user_api_key"
+  USER_API_KEY = "HTTP_USER_API_KEY"
+  USER_API_CLIENT_ID = "HTTP_USER_API_CLIENT_ID"
+  API_KEY_ENV = "_DISCOURSE_API"
+  USER_API_KEY_ENV = "_DISCOURSE_USER_API"
+  TOKEN_COOKIE = ENV["DISCOURSE_TOKEN_COOKIE"] || "_t"
+  PATH_INFO = "PATH_INFO"
+  COOKIE_ATTEMPTS_PER_MIN = 10
+  BAD_TOKEN = "_DISCOURSE_BAD_TOKEN"
   DECRYPTED_AUTH_COOKIE = "_DISCOURSE_DECRYPTED_AUTH_COOKIE"
 
   TOKEN_SIZE = 32
 
-  PARAMETER_API_PATTERNS ||= [
+  PARAMETER_API_PATTERNS = [
     RouteMatcher.new(
       methods: :get,
       actions: [
@@ -123,7 +123,7 @@ class Auth::DefaultCurrentUserProvider
     current_user = nil
 
     if auth_token
-      limiter = RateLimiter.new(nil, "cookie_auth_#{request.ip}", COOKIE_ATTEMPTS_PER_MIN, 60)
+      limiter = RateLimiter.new(nil, "cookie_auth_#{request.ip}", COOKIE_ATTEMPTS_PER_MIN, 1.minute)
 
       if limiter.can_perform?
         @env[USER_TOKEN_KEY] = @user_token =
@@ -187,7 +187,7 @@ class Auth::DefaultCurrentUserProvider
           .active
           .joins(:user)
           .where(key_hash: @hashed_user_api_key)
-          .includes(:user, :scopes)
+          .includes(:user, :scopes, :client)
           .first
 
       raise Discourse::InvalidAccess unless user_api_key_obj
@@ -338,6 +338,7 @@ class Auth::DefaultCurrentUserProvider
       user.logged_out
     elsif user && @user_token
       @user_token.destroy
+      DiscourseEvent.trigger(:user_logged_out, user)
     end
 
     cookie_jar.delete("authentication_data")
@@ -434,7 +435,7 @@ class Auth::DefaultCurrentUserProvider
       limit = [GlobalSetting.max_admin_api_reqs_per_key_per_minute.to_i, limit].max
     end
     @admin_api_key_limiter =
-      RateLimiter.new(nil, "admin_api_min", limit, 60, error_code: "admin_api_key_rate_limit")
+      RateLimiter.new(nil, "admin_api_min", limit, 1.minute, error_code: "admin_api_key_rate_limit")
   end
 
   def user_api_key_limiter_60_secs
@@ -443,7 +444,7 @@ class Auth::DefaultCurrentUserProvider
         nil,
         "user_api_min_#{@hashed_user_api_key}",
         GlobalSetting.max_user_api_reqs_per_minute,
-        60,
+        1.minute,
         error_code: "user_api_key_limiter_60_secs",
       )
   end
@@ -454,7 +455,7 @@ class Auth::DefaultCurrentUserProvider
         nil,
         "user_api_day_#{@hashed_user_api_key}",
         GlobalSetting.max_user_api_reqs_per_day,
-        86_400,
+        1.day,
         error_code: "user_api_key_limiter_1_day",
       )
   end

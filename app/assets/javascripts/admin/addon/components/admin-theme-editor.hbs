@@ -10,32 +10,13 @@
             title={{this.field.title}}
             class={{if target.edited "edited" "blank"}}
           >
-            {{#if target.error}}{{d-icon "exclamation-triangle"}}{{/if}}
+            {{#if target.error}}{{d-icon "triangle-exclamation"}}{{/if}}
             {{#if target.icon}}{{d-icon target.icon}}{{/if}}
             {{i18n (concat "admin.customize.theme." target.name)}}
           </LinkTo>
         </li>
       {{/each}}
 
-      {{#if this.allowAdvanced}}
-        <li>
-          <a
-            {{on "click" this.toggleShowAdvanced}}
-            href
-            title={{i18n
-              (concat
-                "admin.customize.theme."
-                (if this.showAdvanced "hide_advanced" "show_advanced")
-              )
-            }}
-            class="no-text"
-          >
-            {{d-icon
-              (if this.showAdvanced "angle-double-left" "angle-double-right")
-            }}
-          </a>
-        </li>
-      {{/if}}
       <li class="spacer"></li>
       <li>
         <label>
@@ -66,39 +47,12 @@
             title={{field.title}}
             class={{if field.edited "edited" "blank"}}
           >
-            {{#if field.error}}{{d-icon "exclamation-triangle"}}{{/if}}
+            {{#if field.error}}{{d-icon "triangle-exclamation"}}{{/if}}
             {{#if field.icon}}{{d-icon field.icon}}{{/if}}
             {{field.translatedName}}
           </LinkTo>
         </li>
       {{/each}}
-
-      {{#if this.showAddField}}
-        <li>
-          {{#if this.addingField}}
-            <Input
-              @type={{this.text}}
-              @value={{this.newFieldName}}
-              @enter={{this.addField}}
-              @escape-press={{this.cancelAddField}}
-            />
-            <DButton
-              @action={{fn this.addField this.newFieldName}}
-              @icon="check"
-              class="ok"
-            />
-            <DButton
-              @action={{this.cancelAddField}}
-              @icon="times"
-              class="cancel"
-            />
-          {{else}}
-            <a href {{on "click" this.toggleAddField}} class="no-text">
-              {{d-icon "plus"}}
-            </a>
-          {{/if}}
-        </li>
-      {{/if}}
 
       <li class="spacer"></li>
       <li>
@@ -120,6 +74,7 @@
 
 <AceEditor
   @content={{this.activeSection}}
+  @onChange={{fn (mut this.activeSection)}}
   @editorId={{this.editorId}}
   @mode={{this.activeSectionMode}}
   @autofocus="true"
