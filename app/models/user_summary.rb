@@ -33,7 +33,7 @@ class UserSummary
   def links
     TopicLink
       .joins(:topic, :post)
-      .where(posts: { user_id: @user.id })
+      .where(posts: { user_id: @user.id, hidden: false })
       .includes(:topic, :post)
       .where("posts.post_type IN (?)", Topic.visible_post_types(@guardian && @guardian.user))
       .merge(Topic.listable_topics.visible.secured(@guardian))
@@ -79,7 +79,7 @@ class UserSummary
     user_counts(liked_users)
   end
 
-  REPLY_ACTIONS ||= [UserAction::RESPONSE, UserAction::QUOTE, UserAction::MENTION]
+  REPLY_ACTIONS = [UserAction::RESPONSE, UserAction::QUOTE, UserAction::MENTION]
 
   def most_replied_to_users
     replied_users = {}

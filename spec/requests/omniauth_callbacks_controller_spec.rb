@@ -159,12 +159,17 @@ RSpec.describe Users::OmniauthCallbacksController do
           get "/auth/google_oauth2"
           expect(response.status).to eq(302)
         end
+
+        it "should not be CSRF protected if the setting has been disabled" do
+          SiteSetting.auth_require_interaction = false
+          SiteSetting.enable_local_logins = true
+          get "/auth/google_oauth2"
+          expect(response.status).to eq(302)
+        end
       end
     end
 
     context "when in readonly mode" do
-      use_redis_snapshotting
-
       it "should return a 503" do
         Discourse.enable_readonly_mode
 
@@ -174,8 +179,6 @@ RSpec.describe Users::OmniauthCallbacksController do
     end
 
     context "when in staff writes only mode" do
-      use_redis_snapshotting
-
       before { Discourse.enable_readonly_mode(Discourse::STAFF_WRITES_ONLY_MODE_KEY) }
 
       it "returns a 503 for non-staff" do

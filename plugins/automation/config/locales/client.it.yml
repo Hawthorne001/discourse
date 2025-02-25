@@ -6,15 +6,20 @@
 
 it:
   js:
+    admin:
+      logs:
+        staff_actions:
+          actions:
+            delete_automation: elimina automazione
     discourse_automation:
       title: Automazione
-      create: Crea
-      update: Aggiorna
+      back: Indietro
+      edit: Modifica
       select_script: Seleziona uno script
       select_trigger: Seleziona evento di attivazione
       confirm_automation_reset: Questa azione ripristinerà script e le opzioni di attivazione e il nuovo stato verrà salvato. Vuoi procedere?
       confirm_automation_trigger: Questa azione attiverà l'automazione, vuoi procedere?
-      no_automation_yet: Non hai ancora creato alcuna automazione.
+      filter_placeholder: Filtra per nome o descrizione...
       edit_automation:
         trigger_section:
           forced: Questa azione di attivazione è forzata dallo script.
@@ -144,18 +149,27 @@ it:
               label: ID dell'argomento
         post_created_edited:
           fields:
+            original_post_only:
+              label: Solo messaggio originale
+              description: Verrà attivata solo se il messaggio è il messaggio originale nell'argomento
             action_type:
               label: Tipo di azione
               description: "Facoltativo, limita l'attivazione solo agli eventi creati o modificati"
             valid_trust_levels:
               label: Livelli di attendibilità validi
               description: L'attivazione avverrà solo se il messaggio viene creato da utenti in questi livelli di attendibilità, il valore predefinito è qualsiasi livello di attendibilità
+            restricted_tags:
+              label: Etichette
+              description: Facoltativo, l'attivazione avverrà solo se il messaggio ha una di queste etichette
             restricted_category:
               label: Categoria
-              description: Facoltativo, l'attivazione avverrà solo se l'argomento del post rientra in questa categoria
+              description: Facoltativo, l'attivazione avverrà solo se l'argomento del messaggio rientra in questa categoria
             restricted_group:
               label: Gruppo
-              description: Facoltativo, l'attivazione avverrà solo se l'argomento del post è un messaggio privato nella posta in arrivo di questo gruppo
+              description: Facoltativo, l'attivazione avverrà solo se l'argomento del post è un messaggio personale nella posta in arrivo di questo gruppo
+            restricted_groups:
+              label: Gruppi
+              description: Facoltativo, l'attivazione avverrà solo se l'argomento del post è un messaggio personale in una delle caselle di posta del gruppo
             ignore_group_members:
               label: Ignora i membri del gruppo
               description: Salta l'attivazione se il mittente è un membro del gruppo specificato sopra
@@ -168,8 +182,25 @@ it:
             first_topic_only:
               label: Solo il primo argomento
               description: L'attivazione avverrà solo se l'argomento è il primo creato da un utente
+            skip_via_email:
+              label: "Salta tramite e-mail"
+              description: "Salta l'attivazione se il messaggio è stato creato tramite e-mail"
           created: Creato
           edited: Modificato
+        user_updated:
+          fields:
+            user_profile:
+              label: Campi utente profilo
+              description: Si attiverà solo se l'utente compila tutti questi campi
+            custom_fields:
+              label: Campi utente personalizzati
+              description: Si attiverà solo se l'utente compila tutti questi campi
+            once_per_user:
+              label: Una volta per utente
+              description: Si attiverà solo una volta per utente
+            new_users_only:
+              label: Solo nuovi utenti
+              description: Si attiverà solo per i nuovi utenti che si iscriveranno dopo che questa automazione sarà stata abilitata
         category_created_edited:
           fields:
             restricted_category:
@@ -195,6 +226,23 @@ it:
             valid_trust_levels:
               label: Livelli di attendibilità validi
               description: L'attivazione avverrà solo se il messaggio viene creato da utenti in questi livelli di attendibilità, il valore predefinito è qualsiasi livello di attendibilità
+        topic_tags_changed:
+          trigger_on_modes:
+            tags_added_or_removed: Etichette aggiunte o rimosse
+            tags_added: Etichette aggiunte
+            tags_removed: Etichette rimosse
+          fields:
+            watching_categories:
+              label: Categorie osservate
+              description: Verrà attivato solo se l'argomento rientra in una di queste categorie
+            watching_tags:
+              label: Etichette osservate
+              description: Verrà attivato solo se l'argomento ha una di queste etichette
+            trigger_on:
+              label: 'Attivazione:'
+            trigger_with_pms:
+              label: Attiva con messaggi privati
+              description: L'attivazione avverrà anche se le etichette sono state modificate in un messaggio privato
         after_post_cook:
           fields:
             valid_trust_levels:
@@ -202,7 +250,7 @@ it:
               description: L'attivazione avverrà solo se il messaggio viene creato da utenti in questi livelli di attendibilità, il valore predefinito è qualsiasi livello di attendibilità
             restricted_category:
               label: Categoria
-              description: Facoltativo, l'attivazione avverrà solo se l'argomento del post rientra in questa categoria
+              description: Facoltativo, l'attivazione avverrà solo se l'argomento del messaggio rientra in questa categoria
             restricted_tags:
               label: Etichette
               description: Facoltativo, l'attivazione avverrà solo se il messaggio ha una di queste etichette
@@ -220,6 +268,7 @@ it:
               description: Risponde solo una volta per argomento
             word_answer_list:
               label: Elenco di coppie parole/risposte
+              description: "Definisce un elenco di gruppi key/value dove `key` è il termine di ricerca e `value` è il testo della risposta. Il campo `key` può essere lasciato vuoto per rispondere a tutti i trigger indipendentemente dal contenuto. N.B. `value` accetta `{{key}}` come valore segnaposto da rimpiazzare con il valore di `key` nella risposta. `key` viene considerato un'espressione regolare, quindi è necessario inserire una sequenza di escape (es. `\\.`) davanti ai caratteri speciali (es. `.`) che intendi usare come carattere normale e non come sintassi dell'espressione."
             answering_user:
               label: Utente che risponde
               description: Utente di sistema come predefinito
@@ -232,10 +281,25 @@ it:
           fields:
             creator:
               label: Autore
+              post_creator_context: L'autore del messaggio
+              updated_user_context: L'utente aggiornato
             topic:
               label: ID dell'argomento
             post:
               label: Contenuto messaggio
+        topic:
+          fields:
+            creator:
+              label: Autore
+              updated_user_context: L'utente aggiornato
+            body:
+              label: Corpo argomento
+            title:
+              label: Titolo argomento
+            category:
+              label: Categoria argomento
+            tags:
+              label: Etichette argomento
         group_category_notification_default:
           fields:
             group:
@@ -287,7 +351,7 @@ it:
             pinnable_topic:
               label: ID dell'argomento
             pinned_globally:
-              label: Fissato a livello globale
+              label: Appuntato globalmente
             pinned_until:
               label: Fissato fino a
         banner_topic:
@@ -337,6 +401,7 @@ it:
           fields:
             custom_field_name:
               label: "Nome campo personalizzato utente"
+      unnamed_automation: "Automazione senza nome"
       models:
         script:
           name:
@@ -353,6 +418,8 @@ it:
             label: Script
           version:
             label: Versione
+          status:
+            label: Stato
           enabled:
             label: Abilitati
           disabled:

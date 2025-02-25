@@ -64,6 +64,7 @@ ca:
         tabs:
           members: Membres
           settings: Configuració
+        remove_member: "Elimina"
       new_message_modal:
         no_items: "Sense elements"
         filter: "Filtre"
@@ -137,6 +138,8 @@ ca:
             title: "Normal"
           tracking:
             title: "Seguint"
+          watching:
+            title: "Vigilant"
       draft_channel_screen:
         header: "Missatge nou"
         cancel: "Cancel·la"

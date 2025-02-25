@@ -1,12 +1,20 @@
 import Component from "@glimmer/component";
 import { service } from "@ember/service";
 import { htmlSafe } from "@ember/template";
+import { modifier } from "ember-modifier";
+import domFromString from "discourse/lib/dom-from-string";
 import { escapeExpression } from "discourse/lib/utilities";
-import domFromString from "discourse-common/lib/dom-from-string";
-import I18n from "discourse-i18n";
+import { i18n } from "discourse-i18n";
+import lightbox from "../lib/lightbox";
 
 export default class ChatMessageCollapser extends Component {
   @service siteSettings;
+
+  lightbox = modifier((element) => {
+    if (this.args.uploads.length > 0) {
+      lightbox(element.querySelectorAll("img.chat-img-upload"));
+    }
+  });
 
   get hasUploads() {
     return hasUploads(this.args.uploads);
@@ -17,7 +25,7 @@ export default class ChatMessageCollapser extends Component {
     if (this.args.uploads.length === 1) {
       name = this.args.uploads[0].original_filename;
     } else {
-      name = I18n.t("chat.uploaded_files", { count: this.args.uploads.length });
+      name = i18n("chat.uploaded_files", { count: this.args.uploads.length });
     }
     return htmlSafe(
       `<span class="chat-message-collapser-link-small">${escapeExpression(
@@ -66,12 +74,17 @@ export default class ChatMessageCollapser extends Component {
             `<a target="_blank" class="chat-message-collapser-link" rel="noopener noreferrer" href="${link}">${title}</a>`
           );
 
-          acc.push({ header, body: e, videoAttributes, needsCollapser: true });
+          acc.push({
+            header,
+            body: e.outerHTML,
+            videoAttributes,
+            needsCollapser: true,
+          });
         } else {
-          acc.push({ body: e, needsCollapser: false });
+          acc.push({ body: e.outerHTML, needsCollapser: false });
         }
       } else {
-        acc.push({ body: e, needsCollapser: false });
+        acc.push({ body: e.outerHTML, needsCollapser: false });
       }
       return acc;
     }, []);
@@ -88,9 +101,9 @@ export default class ChatMessageCollapser extends Component {
         const header = htmlSafe(
           `<a target="_blank" class="chat-message-collapser-link-small" rel="noopener noreferrer" href="${link}">${link}</a>`
         );
-        acc.push({ header, body: e, needsCollapser: true });
+        acc.push({ header, body: e.outerHTML, needsCollapser: true });
       } else {
-        acc.push({ body: e, needsCollapser: false });
+        acc.push({ body: e.outerHTML, needsCollapser: false });
       }
       return acc;
     }, []);
@@ -106,9 +119,9 @@ export default class ChatMessageCollapser extends Component {
             alt || link
           }</a>`
         );
-        acc.push({ header, body: e, needsCollapser: true });
+        acc.push({ header, body: e.outerHTML, needsCollapser: true });
       } else {
-        acc.push({ body: e, needsCollapser: false });
+        acc.push({ body: e.outerHTML, needsCollapser: false });
       }
       return acc;
     }, []);
@@ -125,9 +138,9 @@ export default class ChatMessageCollapser extends Component {
         const header = htmlSafe(
           `<a target="_blank" class="chat-message-collapser-link-small" rel="noopener noreferrer" href="${link}">${title}</a>`
         );
-        acc.push({ header, body: e, needsCollapser: true });
+        acc.push({ header, body: e.outerHTML, needsCollapser: true });
       } else {
-        acc.push({ body: e, needsCollapser: false });
+        acc.push({ body: e.outerHTML, needsCollapser: false });
       }
       return acc;
     }, []);

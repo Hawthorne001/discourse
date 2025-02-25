@@ -490,6 +490,39 @@ RSpec.describe SiteSettingExtension do
     end
   end
 
+  describe "a setting with an area" do
+    before do
+      settings.setting(:test_setting, 88, area: "flags")
+      settings.setting(:test_setting2, 89, area: "flags")
+      settings.setting(:test_setting4, 90)
+      settings.refresh!
+    end
+
+    it "should allow to filter by area" do
+      expect(settings.all_settings(filter_area: "flags").map { |s| s[:setting].to_sym }).to eq(
+        %i[default_locale test_setting test_setting2],
+      )
+    end
+
+    it "raised an error when area is invalid" do
+      expect {
+        settings.setting(:test_setting, 89, area: "invalid")
+        settings.refresh!
+      }.to raise_error(Discourse::InvalidParameters)
+    end
+
+    it "allows plugin to register valid areas" do
+      plugin = Plugin::Instance.new nil, "/tmp/test.rb"
+      plugin.register_site_setting_area("plugin_area")
+      settings.setting(:test_plugin_setting, 88, area: "plugin_area")
+      expect(
+        settings
+          .all_settings(filter_area: "plugin_area", include_locale_setting: false)
+          .map { |s| s[:setting].to_sym },
+      ).to eq(%i[test_plugin_setting])
+    end
+  end
+
   describe "setting with a validator" do
     before do
       settings.setting(:validated_setting, "info@example.com", type: "email")
@@ -991,6 +1024,123 @@ RSpec.describe SiteSettingExtension do
       expect(SiteSetting.ga_universal_auto_link_domains_map).to eq([])
       expect(SiteSetting.pm_tags_allowed_for_groups_map).to eq([])
       expect(SiteSetting.exclude_rel_nofollow_domains_map).to eq([])
+    end
+  end
+
+  describe "keywords" do
+    it "gets the list of I18n keywords for the setting" do
+      expect(SiteSetting.keywords(:clean_up_inactive_users_after_days)).to eq(
+        I18n.t("site_settings.keywords.clean_up_inactive_users_after_days").split("|"),
+      )
+    end
+
+    it "gets the current locale keywords and the english keywords for the setting" do
+      I18n.locale = :de
+      expect(SiteSetting.keywords(:clean_up_inactive_users_after_days)).to match_array(
+        (
+          I18n.t("site_settings.keywords.clean_up_inactive_users_after_days").split("|") +
+            I18n.t("site_settings.keywords.clean_up_inactive_users_after_days", locale: :en).split(
+              "|",
+            )
+        ).flatten,
+      )
+    end
+
+    context "when a setting also has an alias after renaming" do
+      before { SiteSetting.stubs(:deprecated_setting_alias).returns("some_old_setting") }
+
+      it "is included with the keywords" do
+        expect(SiteSetting.keywords(:clean_up_inactive_users_after_days)).to include(
+          "some_old_setting",
+        )
+      end
+    end
+  end
+
+  describe "logging Site Settings via the Rails Console" do
+    around do |example|
+      # Ensure Rails::Console is defined for the duration of each example.
+      if !Rails.const_defined?(:Console)
+        Rails.const_set("Console", Module.new)
+        example.run
+        Rails.send(:remove_const, "Console")
+      else
+        example.run
+      end
+    end
+
+    before do
+      settings.setting(:log_test, "initial")
+      settings.refresh!
+    end
+
+    context "when using the direct setter" do
+      it "logs the change exactly once" do
+        logger_spy = instance_spy(StaffActionLogger)
+        allow(StaffActionLogger).to receive(:new).with(Discourse.system_user).and_return(logger_spy)
+
+        settings.log_test = "changed"
+        expect(settings.log_test).to eq("changed")
+        expect(logger_spy).to have_received(:log_site_setting_change).with(
+          :log_test,
+          "initial",
+          "changed",
+          { details: "Updated via Rails console" },
+        ).once
+      end
+    end
+
+    context "when using set_and_log" do
+      it "logs the change exactly once without double logging" do
+        logger_spy = instance_spy(StaffActionLogger)
+        allow(StaffActionLogger).to receive(:new).with(Discourse.system_user).and_return(logger_spy)
+
+        settings.set_and_log("log_test", "changed", Discourse.system_user)
+        expect(settings.log_test).to eq("changed")
+        expect(logger_spy).to have_received(:log_site_setting_change).with(
+          :log_test,
+          "initial",
+          "changed",
+          { details: "Updated via Rails console" },
+        ).once
+      end
+    end
+
+    context "for secret settings" do
+      before do
+        settings.setting(:secret_test, "old_secret", secret: true)
+        settings.refresh!
+      end
+
+      it "logs filtered values" do
+        logger_spy = instance_spy(StaffActionLogger)
+        allow(StaffActionLogger).to receive(:new).with(Discourse.system_user).and_return(logger_spy)
+
+        settings.secret_test = "new_secret"
+        expect(settings.secret_test).to eq("new_secret")
+        expect(logger_spy).to have_received(:log_site_setting_change).with(
+          :secret_test,
+          "[FILTERED]",
+          "[FILTERED]",
+          { details: "Updated via Rails console" },
+        ).once
+      end
+    end
+
+    context "for hidden settings" do
+      before do
+        settings.setting(:hidden_test, "old_hidden", hidden: true)
+        settings.refresh!
+      end
+
+      it "does not log the change" do
+        logger_spy = instance_spy(StaffActionLogger)
+        allow(StaffActionLogger).to receive(:new).with(Discourse.system_user).and_return(logger_spy)
+
+        settings.hidden_test = "changed"
+        expect(settings.hidden_test).to eq("changed")
+        expect(logger_spy).not_to have_received(:log_site_setting_change)
+      end
     end
   end
 end

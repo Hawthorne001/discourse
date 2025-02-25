@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Search
-  DIACRITICS ||= /([\u0300-\u036f]|[\u1AB0-\u1AFF]|[\u1DC0-\u1DFF]|[\u20D0-\u20FF])/
+  DIACRITICS = /([\u0300-\u036f]|[\u1AB0-\u1AFF]|[\u1DC0-\u1DFF]|[\u20D0-\u20FF])/
   HIGHLIGHT_CSS_CLASS = "search-highlight"
 
   cattr_accessor :preloaded_topic_custom_fields
@@ -71,8 +71,16 @@ class Search
     end
   end
 
-  def self.wrap_unaccent(str)
-    SiteSetting.search_ignore_accents ? "unaccent(#{str})" : str
+  def self.unaccent(str)
+    if SiteSetting.search_ignore_accents
+      DB.query("SELECT unaccent(:str)", str: str)[0].unaccent
+    else
+      str
+    end
+  end
+
+  def self.wrap_unaccent(expr)
+    SiteSetting.search_ignore_accents ? "unaccent(#{expr})" : expr
   end
 
   def self.segment_chinese?
@@ -109,7 +117,7 @@ class Search
     data.force_encoding("UTF-8")
     data = clean_term(data)
 
-    if purpose != :topic
+    if purpose != :topic && need_segmenting?(data)
       if segment_chinese?
         require "cppjieba_rb" unless defined?(CppjiebaRb)
 
@@ -216,6 +224,13 @@ class Search
       .fetch("search-min-post-id:#{SiteSetting.search_recent_posts_size}", expires_in: 1.week) do
         min_post_id_no_cache
       end
+  end
+
+  def self.need_segmenting?(data)
+    return false if data.match?(/\A\d+\z/)
+    !URI.parse(data).path.to_s.start_with?("/")
+  rescue URI::InvalidURIError
+    true
   end
 
   attr_accessor :term
@@ -859,9 +874,9 @@ class Search
         FROM topic_tags tt, tags
         WHERE tt.tag_id = tags.id
         GROUP BY tt.topic_id
-        HAVING to_tsvector(#{default_ts_config}, #{Search.wrap_unaccent("array_to_string(array_agg(lower(tags.name)), ' ')")}) @@ to_tsquery(#{default_ts_config}, #{Search.wrap_unaccent("?")})
+        HAVING to_tsvector(#{default_ts_config}, #{Search.wrap_unaccent("array_to_string(array_agg(lower(tags.name)), ' ')")}) @@ to_tsquery(#{default_ts_config}, ?)
       )",
-        tags.join("&"),
+        Search.unaccent(tags.join("&")),
       )
     else
       tags = match.split(",")
@@ -888,8 +903,11 @@ class Search
         found = false
 
         Search.advanced_filters.each do |matcher, block|
+          case_insensitive_matcher =
+            Regexp.new(matcher.source, matcher.options | Regexp::IGNORECASE)
+
           cleaned = word.gsub(/["']/, "")
-          if cleaned =~ matcher
+          if cleaned =~ case_insensitive_matcher
             (@filters ||= []) << [block, $1]
             found = true
           end
@@ -1360,7 +1378,7 @@ class Search
 
   def self.to_tsquery(ts_config: nil, term:, joiner: nil)
     ts_config = ActiveRecord::Base.connection.quote(ts_config) if ts_config
-    escaped_term = wrap_unaccent("'#{escape_string(term)}'")
+    escaped_term = "'#{escape_string(unaccent(term))}'"
     tsquery = "TO_TSQUERY(#{ts_config || default_ts_config}, #{escaped_term})"
     # PG 14 and up default to using the followed by operator
     # this restores the old behavior

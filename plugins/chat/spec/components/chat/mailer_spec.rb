@@ -23,7 +23,9 @@ describe Chat::Mailer do
   end
 
   def expect_enqueued
-    expect_enqueued_with(job:, args:) { described_class.send_unread_mentions_summary }
+    expect {
+      expect_enqueued_with(job:, args:) { described_class.send_unread_mentions_summary }
+    }.to_not output.to_stderr_from_any_process
     expect(Jobs::UserEmail.jobs.size).to eq(1)
   end
 
@@ -50,6 +52,14 @@ describe Chat::Mailer do
 
   describe "in a followed channel" do
     before { followed_channel.add(user) }
+
+    describe "there is a new message" do
+      let!(:chat_message) { create_message(followed_channel, "hello y'all :wave:") }
+
+      it "does not queue a chat summary" do
+        expect_not_enqueued
+      end
+    end
 
     describe "user is @direct mentioned" do
       let!(:chat_message) do
@@ -191,6 +201,14 @@ describe Chat::Mailer do
   describe "in a non-followed channel" do
     before { non_followed_channel.add(user).update!(following: false) }
 
+    describe "there is a new message" do
+      let!(:chat_message) { create_message(non_followed_channel, "hello y'all :wave:") }
+
+      it "does not queue a chat summary" do
+        expect_not_enqueued
+      end
+    end
+
     describe "user is @direct mentioned" do
       before { create_message(non_followed_channel, "hello @#{user.username}", Chat::UserMention) }
 
@@ -219,6 +237,14 @@ describe Chat::Mailer do
   describe "in a muted channel" do
     before { muted_channel.add(user).update!(muted: true) }
 
+    describe "there is a new message" do
+      let!(:chat_message) { create_message(muted_channel, "hello y'all :wave:") }
+
+      it "does not queue a chat summary" do
+        expect_not_enqueued
+      end
+    end
+
     describe "user is @direct mentioned" do
       before { create_message(muted_channel, "hello @#{user.username}", Chat::UserMention) }
 
@@ -245,6 +271,14 @@ describe Chat::Mailer do
   end
 
   describe "in an unseen channel" do
+    describe "there is a new message" do
+      let!(:chat_message) { create_message(unseen_channel, "hello y'all :wave:") }
+
+      it "does not queue a chat summary" do
+        expect_not_enqueued
+      end
+    end
+
     describe "user is @direct mentioned" do
       before { create_message(unseen_channel, "hello @#{user.username}") }
 
@@ -260,6 +294,14 @@ describe Chat::Mailer do
         expect_not_enqueued
       end
     end
+
+    describe "there is an @all mention" do
+      before { create_message(unseen_channel, "hello @all", Chat::AllMention) }
+
+      it "does not queue a chat summary email" do
+        expect_not_enqueued
+      end
+    end
   end
 
   describe "in a direct message" do
@@ -269,7 +311,7 @@ describe Chat::Mailer do
       expect_enqueued
     end
 
-    it "queues a chat summary email when user isn't following the direct message anymore" do
+    it "queues a chat summary email even when user isn't following the direct message anymore" do
       direct_message.membership_for(user).update!(following: false)
       expect_enqueued
     end
@@ -281,6 +323,44 @@ describe Chat::Mailer do
 
     it "does not queue a chat summary email when user has private messages disabled" do
       user.user_option.update!(allow_private_messages: false)
+      expect_not_enqueued
+    end
+
+    it "queues a chat summary email when message is the original thread message" do
+      Fabricate(:chat_thread, channel: direct_message, original_message: Chat::Message.last)
+      expect_enqueued
+    end
+  end
+
+  describe "in direct message channel with threads" do
+    fab!(:dm_channel) { Fabricate(:direct_message_channel, users: [user, other]) }
+    fab!(:message) do
+      Fabricate(:chat_message, chat_channel: dm_channel, user: other, created_at: 2.weeks.ago)
+    end
+    fab!(:thread) do
+      Fabricate(:chat_thread, channel: dm_channel, original_message: message, with_replies: 1)
+    end
+
+    it "does not queue a chat summary email for thread replies" do
+      expect_not_enqueued
+    end
+
+    it "queues a chat summary email when user is watching the thread" do
+      Fabricate(
+        :user_chat_thread_membership,
+        user: user,
+        thread: thread,
+        notification_level: Chat::NotificationLevels.all[:watching],
+      )
+
+      expect_enqueued
+    end
+
+    it "does not queue a chat summary for threads watched by other users" do
+      thread.membership_for(other).update!(
+        notification_level: Chat::NotificationLevels.all[:watching],
+      )
+
       expect_not_enqueued
     end
   end

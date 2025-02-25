@@ -5,6 +5,12 @@ module PageObjects
     class Composer < PageObjects::Components::Base
       COMPOSER_ID = "#reply-control"
       AUTOCOMPLETE_MENU = ".autocomplete.ac-emoji"
+      HASHTAG_MENU = ".autocomplete.hashtag-autocomplete"
+      MENTION_MENU = ".autocomplete.ac-user"
+
+      def rich_editor
+        find(".d-editor-input.ProseMirror")
+      end
 
       def opened?
         page.has_css?("#{COMPOSER_ID}.open")
@@ -12,6 +18,10 @@ module PageObjects
 
       def closed?
         page.has_css?("#{COMPOSER_ID}.closed", visible: :all)
+      end
+
+      def minimized?
+        page.has_css?("#{COMPOSER_ID}.draft")
       end
 
       def open_composer_actions
@@ -107,6 +117,14 @@ module PageObjects
 
       def has_discard_draft_modal?
         page.has_css?(".discard-draft-modal")
+      end
+
+      def has_hashtag_autocomplete?
+        has_css?(HASHTAG_MENU)
+      end
+
+      def has_mention_autocomplete?
+        has_css?(MENTION_MENU)
       end
 
       def has_emoji_autocomplete?
@@ -237,6 +255,14 @@ module PageObjects
         JS
       end
 
+      def select_range(start_index, length)
+        execute_script(<<~JS, text)
+          const composer = document.querySelector("#{COMPOSER_ID} .d-editor-input");
+          composer.focus();
+          composer.setSelectionRange(#{start_index}, #{length});
+        JS
+      end
+
       def submit
         find("#{COMPOSER_ID} .save-or-cancel .create").click
       end
@@ -259,6 +285,11 @@ module PageObjects
         select_kit.search(username)
         select_kit.select_row_by_value(username)
         select_kit.collapse
+      end
+
+      def toggle_rich_editor
+        find("#{COMPOSER_ID} .composer-toggle-switch").click
+        self
       end
 
       private

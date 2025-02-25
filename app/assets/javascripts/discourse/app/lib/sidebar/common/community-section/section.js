@@ -1,5 +1,5 @@
 import { tracked } from "@glimmer/tracking";
-import { setOwner } from "@ember/owner";
+import { getOwner, setOwner } from "@ember/owner";
 import { service } from "@ember/service";
 import AboutSectionLink from "discourse/lib/sidebar/common/community-section/about-section-link";
 import BadgesSectionLink from "discourse/lib/sidebar/common/community-section/badges-section-link";
@@ -13,6 +13,7 @@ import {
 } from "discourse/lib/sidebar/custom-community-section-links";
 import SectionLink from "discourse/lib/sidebar/section-link";
 import AdminSectionLink from "discourse/lib/sidebar/user/community-section/admin-section-link";
+import InviteSectionLink from "discourse/lib/sidebar/user/community-section/invite-section-link";
 import MyPostsSectionLink from "discourse/lib/sidebar/user/community-section/my-posts-section-link";
 import ReviewSectionLink from "discourse/lib/sidebar/user/community-section/review-section-link";
 
@@ -26,6 +27,7 @@ const SPECIAL_LINKS_MAP = {
   "/badges": BadgesSectionLink,
   "/admin": AdminSectionLink,
   "/g": GroupsSectionLink,
+  "/new-invite": InviteSectionLink,
 };
 
 export default class CommunitySection {
@@ -55,21 +57,28 @@ export default class CommunitySection {
       });
     });
 
-    this.apiLinks = customSectionLinks
-      .concat(secondaryCustomSectionLinks)
-      .map((link) => this.#initializeSectionLink(link, { inMoreDrawer: true }));
+    this.apiPrimaryLinks = customSectionLinks.map((link) =>
+      this.#initializeSectionLink(link, { inMoreDrawer: false })
+    );
 
-    this.links = this.section.links.reduce((filtered, link) => {
-      if (link.segment === "primary") {
-        const generatedLink = this.#generateLink(link);
+    this.apiSecondaryLinks = secondaryCustomSectionLinks.map((link) =>
+      this.#initializeSectionLink(link, { inMoreDrawer: true })
+    );
 
-        if (generatedLink) {
-          filtered.push(generatedLink);
+    this.links = this.section.links
+      .reduce((filtered, link) => {
+        if (link.segment === "primary") {
+          const generatedLink = this.#generateLink(link);
+
+          if (generatedLink) {
+            filtered.push(generatedLink);
+          }
         }
-      }
 
-      return filtered;
-    }, []);
+        return filtered;
+      }, [])
+      .concat(this.apiPrimaryLinks)
+      .filter((link) => link.shouldDisplay);
 
     this.moreLinks = this.section.links
       .reduce((filtered, link) => {
@@ -83,7 +92,8 @@ export default class CommunitySection {
 
         return filtered;
       }, [])
-      .concat(this.apiLinks);
+      .concat(this.apiSecondaryLinks)
+      .filter((link) => link.shouldDisplay);
   }
 
   teardown() {
@@ -120,12 +130,7 @@ export default class CommunitySection {
     if (this.router.isDestroying) {
       return;
     }
-    return new sectionLinkClass({
-      topicTrackingState: this.topicTrackingState,
-      currentUser: this.currentUser,
-      appEvents: this.appEvents,
-      router: this.router,
-      siteSettings: this.siteSettings,
+    return new sectionLinkClass(getOwner(this), {
       inMoreDrawer,
       overridenName,
       overridenIcon,

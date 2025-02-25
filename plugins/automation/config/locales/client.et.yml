@@ -7,7 +7,8 @@
 et:
   js:
     discourse_automation:
-      create: Loo
+      back: Tagasi
+      edit: Muuda
       fields:
         user:
           label: Kasutaja
@@ -44,10 +45,14 @@ et:
               label: Teema ID
         post_created_edited:
           fields:
+            restricted_tags:
+              label: Sildid
             restricted_category:
               label: Foorum
             restricted_group:
               label: Grupp
+            restricted_groups:
+              label: Grupid
           created: Loodud
         category_created_edited:
           fields:
@@ -122,6 +127,8 @@ et:
             label: Päästik
           version:
             label: Versioon
+          status:
+            label: Staatus
           enabled:
             label: Sisse lülitatud
           disabled:
