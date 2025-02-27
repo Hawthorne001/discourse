@@ -5,6 +5,11 @@
 # https://translate.discourse.org/
 
 sk:
+  admin_js:
+    admin:
+      site_settings:
+        categories:
+          poll: "Discourse anketa"
   js:
     poll:
       voters:
@@ -17,6 +22,11 @@ sk:
         few: "hlasy celkom"
         many: "hlasov celkom"
         other: "hlasov celkom"
+      votes:
+        one: "%{count} hlas"
+        few: "%{count} hlasov"
+        many: "%{count} hlasov"
+        other: "%{count} hlasy"
       average_rating: "Priemerné hodnotenie: <strong>%{average}</strong>."
       public:
         title: "Hlasy sú <strong>verejné</strong>."
@@ -56,6 +66,12 @@ sk:
       show-results:
         title: "Zobraziť výsledky hlasovania"
         label: "Výsledky"
+      show-tally:
+        title: "Zobraziť výsledky hlasovania podľa počtu hlasov"
+        label: "Zobraziť súčet"
+      show-percentage:
+        title: "Zobraziť výsledky hlasovania v percentách"
+        label: "Zobraziť v percentách"
       remove-vote:
         title: "Odstrániť hlas"
         label: "Zrušiť hlas"
@@ -107,6 +123,8 @@ sk:
         label: "Možnosti"
         ranked_choice:
           abstain: "Zdržať sa hlasovania"
+          highest_priority: "(najvyššia priorita)"
+          lowest_priority: "(najnižšia priorita)"
           login: "Prihláste sa a hlasujte!"
       error_while_toggling_status: "Ľutujeme, nastala chyba pri prepínaní stavu tohto hlasovania."
       error_while_casting_votes: "Ľutujeme, nastala chyba pri prideľovaní Vašich hlasov."

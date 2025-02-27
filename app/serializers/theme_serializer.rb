@@ -10,10 +10,10 @@ class ThemeSerializer < BasicThemeSerializer
              :settings,
              :errors,
              :supported?,
-             :description,
              :enabled?,
              :disabled_at,
-             :theme_fields
+             :theme_fields,
+             :screenshot_url
 
   has_one :color_scheme, serializer: ColorSchemeSerializer, embed: :object
   has_one :user, serializer: UserNameSerializer, embed: :object
@@ -47,6 +47,13 @@ class ThemeSerializer < BasicThemeSerializer
     @include_theme_field_values || object.remote_theme_id.nil?
   end
 
+  def screenshot_url
+    object
+      .theme_fields
+      .find { |field| field.type_id == ThemeField.types[:theme_screenshot_upload_var] }
+      &.upload_url
+  end
+
   def child_themes
     object.child_themes
   end
@@ -74,10 +81,6 @@ class ThemeSerializer < BasicThemeSerializer
 
   def include_errors?
     @errors.present?
-  end
-
-  def description
-    object.internal_translations.find { |t| t.key == "theme_metadata.description" }&.value
   end
 
   def include_disabled_at?

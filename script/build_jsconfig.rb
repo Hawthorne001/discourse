@@ -8,9 +8,7 @@ Dir.chdir("#{__dir__}/..") # rubocop:disable Discourse/NoChdir because this is n
 CORE_NAMESPACES = {
   "discourse/*" => ["app/assets/javascripts/discourse/app"],
   "discourse/tests/*" => ["app/assets/javascripts/discourse/tests"],
-  "discourse-common/*" => ["app/assets/javascripts/discourse-common/addon"],
   "admin/*" => ["app/assets/javascripts/admin/addon"],
-  "wizard/*" => ["app/assets/javascripts/wizard/addon"],
   "pretty-text/*" => ["app/assets/javascripts/pretty-text/addon"],
   "select-kit/*" => ["app/assets/javascripts/select-kit/addon"],
   "float-kit/*" => ["app/assets/javascripts/float-kit/addon"],
@@ -33,6 +31,7 @@ def write_config(package_dir, extras: {})
       "module" => "esnext",
       "moduleResolution" => "bundler",
       "experimentalDecorators" => true,
+      "allowJs" => true,
       "paths" => {
         **namespaces
           .map { |ns, paths| [ns, paths.map { |p| "#{relative(package_dir, p)}/*" }] }
@@ -40,6 +39,15 @@ def write_config(package_dir, extras: {})
       },
     },
     "include" => namespaces.flat_map { |ns, paths| paths.map { |p| relative(package_dir, p) } },
+    "exclude" => [
+      "app/assets/javascripts/discourse/tests/unit/utils/decorators-test.js", # Native class decorators - unsupported by ts/glint
+      "app/assets/javascripts/discourse/tests/integration/component-templates-test.gjs", # hbs`` tagged templates - https://github.com/typed-ember/glint/issues/705
+      "**/*.hbs",
+    ],
+    "glint" => {
+      "environment" => %w[ember-loose ember-template-imports],
+      "checkStandaloneTemplates" => false,
+    },
   }
 
   output = <<~JSON

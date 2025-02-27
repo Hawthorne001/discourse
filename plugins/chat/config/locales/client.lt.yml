@@ -20,7 +20,6 @@ lt:
       deleted_chat_username: ištrintas
       dates:
         yesterday: "Vakar"
-        time_tiny: "h:mm"
       bot: "botas"
       create: "Sukurti"
       cancel: "Atšaukti"
@@ -79,6 +78,7 @@ lt:
         tabs:
           members: Nariai
           settings: Nustatymai
+        remove_member: "Pašalinti"
       new_message_modal:
         no_items: "Nėra elementų"
         filter: "Filtruoti"
@@ -158,6 +158,8 @@ lt:
             title: "Įprastas"
           tracking:
             title: "Seku"
+          watching:
+            title: "Stebiu"
         participants_other_count:
           one: "+%{count}"
           few: "+%{count}"

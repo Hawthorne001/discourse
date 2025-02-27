@@ -1,4 +1,8 @@
-<p>{{i18n "admin.email.preview_digest_desc"}}</p>
+<DPageSubheader
+  @descriptionLabel={{i18n
+    "admin.config.email.sub_pages.preview_summary.header_description"
+  }}
+/>
 
 <div class="admin-controls email-preview">
   <div class="controls">
@@ -9,7 +13,11 @@
       <EmailGroupUserChooser
         @value={{this.username}}
         @onChange={{action "updateUsername"}}
-        @options={{hash maximum=1}}
+        @options={{hash
+          maximum=1
+          caretDownIcon="caret-down"
+          caretUpIcon="caret-up"
+        }}
       />
       <DButton
         @action={{this.refresh}}

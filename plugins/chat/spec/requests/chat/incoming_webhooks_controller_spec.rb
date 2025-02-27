@@ -72,8 +72,6 @@ RSpec.describe Chat::IncomingWebhooksController do
     end
 
     describe "rate limiting" do
-      use_redis_snapshotting
-
       it "rate limits" do
         RateLimiter.enable
         10.times { post "/chat/hooks/#{webhook.key}.json", params: valid_payload }
@@ -148,6 +146,15 @@ RSpec.describe Chat::IncomingWebhooksController do
       expect(Chat::Message.last.message).to eq(
         "New alert: \"[StatusCake] https://www.test_notification.com (StatusCake Test Alert): Down,\" [46353](https://eu.opsg.in/a/i/test/blahguid)\nTags:",
       )
+    end
+
+    it "works without .json extension" do
+      expect { post "/chat/hooks/#{webhook.key}", params: valid_payload }.to change {
+        Chat::Message.where(chat_channel: chat_channel).count
+      }.by(1)
+      expect(response.status).to eq(200)
+      chat_webhook_event = Chat::WebhookEvent.last
+      expect(chat_webhook_event.chat_message_id).to eq(Chat::Message.last.id)
     end
   end
 end

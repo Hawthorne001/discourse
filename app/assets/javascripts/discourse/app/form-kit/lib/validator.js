@@ -1,4 +1,6 @@
-import I18n from "discourse-i18n";
+import { isBlank } from "@ember/utils";
+import moment from "moment";
+import { i18n } from "discourse-i18n";
 
 export default class Validator {
   constructor(value, rules = {}) {
@@ -27,16 +29,36 @@ export default class Validator {
     return errors;
   }
 
+  dateBeforeOrEqualValidator(value, rule) {
+    if (!moment(value).isSameOrBefore(rule.date, "day")) {
+      return i18n("form_kit.errors.date_before_or_equal", {
+        date: moment(rule.date).format("LL"),
+      });
+    }
+  }
+
+  dateAfterOrEqualValidator(value, rule) {
+    if (!moment(value).isSameOrAfter(rule.date, "day")) {
+      return i18n("form_kit.errors.date_after_or_equal", {
+        date: moment(rule.date).format("LL"),
+      });
+    }
+  }
+
   integerValidator(value) {
     if (!Number.isInteger(Number(value))) {
-      return I18n.t("form_kit.errors.not_an_integer");
+      return i18n("form_kit.errors.not_an_integer");
     }
   }
 
   lengthValidator(value, rule) {
+    if (isBlank(value)) {
+      return;
+    }
+
     if (rule.max) {
       if (value?.length > rule.max) {
-        return I18n.t("form_kit.errors.too_long", {
+        return i18n("form_kit.errors.too_long", {
           count: rule.max,
         });
       }
@@ -44,7 +66,7 @@ export default class Validator {
 
     if (rule.min) {
       if (value?.length < rule.min) {
-        return I18n.t("form_kit.errors.too_short", {
+        return i18n("form_kit.errors.too_short", {
           count: rule.min,
         });
       }
@@ -54,7 +76,7 @@ export default class Validator {
   betweenValidator(value, rule) {
     if (rule.max) {
       if (value > rule.max) {
-        return I18n.t("form_kit.errors.too_high", {
+        return i18n("form_kit.errors.too_high", {
           count: rule.max,
         });
       }
@@ -62,7 +84,7 @@ export default class Validator {
 
     if (rule.min) {
       if (value < rule.min) {
-        return I18n.t("form_kit.errors.too_low", {
+        return i18n("form_kit.errors.too_low", {
           count: rule.min,
         });
       }
@@ -71,14 +93,14 @@ export default class Validator {
 
   numberValidator(value) {
     if (isNaN(Number(value))) {
-      return I18n.t("form_kit.errors.not_a_number");
+      return i18n("form_kit.errors.not_a_number");
     }
   }
 
   acceptedValidator(value) {
     const acceptedValues = ["yes", "on", true, 1, "true"];
     if (!acceptedValues.includes(value)) {
-      return I18n.t("form_kit.errors.not_accepted");
+      return i18n("form_kit.errors.not_accepted");
     }
   }
 
@@ -86,8 +108,8 @@ export default class Validator {
     try {
       // eslint-disable-next-line no-new
       new URL(value);
-    } catch (e) {
-      return I18n.t("form_kit.errors.invalid_url");
+    } catch {
+      return i18n("form_kit.errors.invalid_url");
     }
   }
 
@@ -104,7 +126,7 @@ export default class Validator {
         }
         break;
       case "input-number":
-        if (!value || typeof value === "undefined" || isNaN(Number(value))) {
+        if ((!value && value !== 0) || isNaN(Number(value))) {
           error = true;
         }
         break;
@@ -114,13 +136,13 @@ export default class Validator {
         }
         break;
       default:
-        if (!value) {
+        if (isBlank(value)) {
           error = true;
         }
     }
 
     if (error) {
-      return I18n.t("form_kit.errors.required");
+      return i18n("form_kit.errors.required");
     }
   }
 }

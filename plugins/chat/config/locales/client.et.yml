@@ -84,6 +84,7 @@ et:
         tabs:
           members: Liikmed
           settings: Sätted
+        remove_member: "Eemalda"
       new_message_modal:
         filter: "Filter"
         create_new_group_chat: "Looge grupivestlus"
@@ -160,6 +161,8 @@ et:
             title: "Normaalne"
           tracking:
             title: "Jälgimine"
+          watching:
+            title: "Vaatlemine"
         participants_other_count:
           one: "+%{count}"
           other: "+%{count}"

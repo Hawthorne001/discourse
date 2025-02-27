@@ -1,6 +1,6 @@
 <ComposerBody
   @composer={{this.composer.model}}
-  @showPreview={{this.composer.showPreview}}
+  @showPreview={{this.composer.isPreviewVisible}}
   @openIfDraft={{this.composer.openIfDraft}}
   @typed={{this.composer.typed}}
   @cancelled={{this.composer.cancelled}}
@@ -8,6 +8,7 @@
 >
   <div class="grippie"></div>
   {{#if this.composer.visible}}
+    {{html-class (if this.composer.isPreviewVisible "composer-has-preview")}}
     <ComposerMessages
       @composer={{this.composer.model}}
       @messageCount={{this.composer.messageCount}}
@@ -73,7 +74,7 @@
                 <LinkToInput
                   @onClick={{this.composer.displayEditReason}}
                   @showInput={{this.composer.showEditReason}}
-                  @icon="info-circle"
+                  @icon="circle-info"
                   class="display-edit-reason"
                 >
                   <TextField
@@ -102,36 +103,7 @@
           />
         </div>
 
-        <ComposerEditor
-          @topic={{this.composer.topic}}
-          @composer={{this.composer.model}}
-          @lastValidatedAt={{this.composer.lastValidatedAt}}
-          @canWhisper={{this.composer.canWhisper}}
-          @storeToolbarState={{this.composer.storeToolbarState}}
-          @onPopupMenuAction={{this.composer.onPopupMenuAction}}
-          @showUploadModal={{route-action "showUploadSelector"}}
-          @popupMenuOptions={{this.composer.popupMenuOptions}}
-          @draftStatus={{this.composer.model.draftStatus}}
-          @isUploading={{this.composer.isUploading}}
-          @isProcessingUpload={{this.composer.isProcessingUpload}}
-          @allowUpload={{this.composer.allowUpload}}
-          @uploadIcon={{this.composer.uploadIcon}}
-          @isCancellable={{this.composer.isCancellable}}
-          @uploadProgress={{this.composer.uploadProgress}}
-          @groupsMentioned={{this.composer.groupsMentioned}}
-          @cannotSeeMention={{this.composer.cannotSeeMention}}
-          @hereMention={{this.composer.hereMention}}
-          @importQuote={{this.composer.importQuote}}
-          @togglePreview={{this.composer.togglePreview}}
-          @processPreview={{this.composer.showPreview}}
-          @showToolbar={{this.composer.showToolbar}}
-          @afterRefresh={{this.composer.afterRefresh}}
-          @focusTarget={{this.composer.focusTarget}}
-          @disableTextarea={{this.composer.disableTextarea}}
-          @formTemplateIds={{this.composer.formTemplateIds}}
-          @formTemplateInitialValues={{this.composer.formTemplateInitialValues}}
-          @onSelectFormTemplate={{this.composer.onSelectFormTemplate}}
-        >
+        <ComposerEditor>
           <div class="composer-fields">
             <PluginOutlet
               @name="before-composer-fields"
@@ -165,7 +137,7 @@
 
                 <div
                   class="title-and-category
-                    {{if this.composer.showPreview 'with-preview'}}"
+                    {{if this.composer.isPreviewVisible 'with-preview'}}"
                 >
                   <ComposerTitle
                     @composer={{this.composer.model}}
@@ -233,7 +205,7 @@
                   @connectorTagName="div"
                   @outletArgs={{hash
                     model=this.composer.model
-                    showPreview=this.composer.showPreview
+                    showPreview=this.composer.isPreviewVisible
                   }}
                 />
               </span>
@@ -267,25 +239,21 @@
             />
 
             {{#if this.site.mobileView}}
-              <a
-                href
-                {{on "click" this.composer.cancel}}
-                title={{i18n "cancel"}}
-                class="cancel"
-              >
-                {{#if this.composer.canEdit}}
-                  {{d-icon "times"}}
-                {{else}}
-                  {{d-icon "far-trash-alt"}}
-                {{/if}}
-              </a>
+              <DButton
+                @action={{this.composer.cancel}}
+                class="cancel btn-transparent"
+                @icon={{if this.composer.canEdit "xmark" "trash-can"}}
+                @preventFocus={{true}}
+                @title="close"
+              />
             {{else}}
-              <a
-                href
-                {{on "click" this.composer.cancel}}
-                class="cancel"
-                role="button"
-              >{{i18n "close"}}</a>
+              <DButton
+                @action={{this.composer.cancel}}
+                class="cancel btn-transparent"
+                @preventFocus={{true}}
+                @title="close"
+                @label="close"
+              />
             {{/if}}
 
             {{#if this.site.mobileView}}
@@ -327,21 +295,24 @@
               </a>
             {{/if}}
 
-            <a
-              href
-              class="btn btn-default no-text mobile-preview"
-              title={{i18n "composer.show_preview"}}
-              {{on "click" this.composer.togglePreview}}
-              aria-label={{i18n "preview"}}
-            >
-              {{d-icon "desktop"}}
-            </a>
+            {{#if this.composer.allowPreview}}
+              <a
+                href
+                class="btn btn-default no-text mobile-preview"
+                title={{i18n "composer.show_preview"}}
+                {{on "click" this.composer.togglePreview}}
+                aria-label={{i18n "composer.show_preview"}}
+              >
+                {{d-icon "desktop"}}
+              </a>
+            {{/if}}
 
-            {{#if this.composer.showPreview}}
+            {{#if this.composer.isPreviewVisible}}
               <DButton
                 @action={{this.composer.togglePreview}}
+                @title="composer.hide_preview"
                 @ariaLabel="composer.hide_preview"
-                @icon="pencil-alt"
+                @icon="pencil"
                 class="hide-preview"
               />
             {{/if}}
@@ -367,7 +338,7 @@
                   href
                   id="cancel-file-upload"
                   {{on "click" this.composer.cancelUpload}}
-                >{{d-icon "times"}}</a>
+                >{{d-icon "xmark"}}</a>
               {{/if}}
             </div>
           {{/if}}
@@ -386,9 +357,9 @@
                     this.composer.model.draftConflictUser
                     imageSize="small"
                   }}
-                  {{d-icon "user-edit"}}
+                  {{d-icon "user-pen"}}
                 {{else}}
-                  {{d-icon "exclamation-triangle"}}
+                  {{d-icon "triangle-exclamation"}}
                 {{/if}}
                 {{#if this.site.desktopView}}
                   {{this.composer.model.draftStatus}}
@@ -397,14 +368,14 @@
             {{/if}}
           </div>
 
-          {{#if this.site.desktopView}}
+          {{#if (and this.composer.allowPreview this.site.desktopView)}}
             <DButton
               @action={{this.composer.togglePreview}}
               @translatedTitle={{this.composer.toggleText}}
-              @icon="angle-double-left"
+              @icon="angles-left"
               class={{concat-class
                 "btn-transparent btn-mini-toggle toggle-preview"
-                (unless this.composer.showPreview "active")
+                (unless this.composer.isPreviewVisible "active")
               }}
             />
           {{/if}}

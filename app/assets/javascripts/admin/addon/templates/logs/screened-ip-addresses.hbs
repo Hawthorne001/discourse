@@ -1,4 +1,8 @@
-<p>{{i18n "admin.logs.screened_ips.description"}}</p>
+<DPageSubheader
+  @descriptionLabel={{i18n
+    "admin.config.staff_action_logs.sub_pages.screened_ips.header_description"
+  }}
+/>
 
 <div class="screened-ip-controls">
   <div class="filter-screened-ip-address inline-form">
@@ -95,12 +99,12 @@
               {{else}}
                 <DButton
                   @action={{fn this.destroyRecord item}}
-                  @icon="far-trash-alt"
+                  @icon="trash-can"
                   class="btn-default btn-danger"
                 />
                 <DButton
                   @action={{fn this.edit item}}
-                  @icon="pencil-alt"
+                  @icon="pencil"
                   class="btn-default"
                 />
                 {{#if item.isBlocked}}

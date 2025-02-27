@@ -63,6 +63,7 @@ bs_BA:
         tabs:
           members: Članovi
           settings: Postavke
+        remove_member: "Ukloni"
       new_message_modal:
         no_items: "Nema stavki"
         filter: "Filter"
@@ -133,6 +134,8 @@ bs_BA:
             title: "Normalno"
           tracking:
             title: "Praćenje"
+          watching:
+            title: "Motrenje"
       draft_channel_screen:
         header: "Nova poruka"
         cancel: "Odustani"

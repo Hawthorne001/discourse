@@ -8,18 +8,17 @@ import { isEmpty } from "@ember/utils";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import cookie, { removeCookie } from "discourse/lib/cookie";
+import escape from "discourse/lib/escape";
+import getURL from "discourse/lib/get-url";
 import { wantsNewWindow } from "discourse/lib/intercept-click";
 import { areCookiesEnabled } from "discourse/lib/utilities";
-import { wavingHandURL } from "discourse/lib/waving-hand-url";
 import {
   getPasskeyCredential,
   isWebauthnSupported,
 } from "discourse/lib/webauthn";
 import { findAll } from "discourse/models/login-method";
 import { SECOND_FACTOR_METHODS } from "discourse/models/user";
-import escape from "discourse-common/lib/escape";
-import getURL from "discourse-common/lib/get-url";
-import I18n from "discourse-i18n";
+import { i18n } from "discourse-i18n";
 import ForgotPassword from "./forgot-password";
 
 export default class Login extends Component {
@@ -64,10 +63,6 @@ export default class Login extends Component {
     return this.loggingIn || this.loggedIn;
   }
 
-  get wavingHandURL() {
-    return wavingHandURL();
-  }
-
   get modalBodyClasses() {
     const classes = ["login-modal-body"];
     if (this.awaitingApproval) {
@@ -110,9 +105,7 @@ export default class Login extends Component {
   }
 
   get showSignupLink() {
-    return (
-      this.args.model.canSignUp && !this.loggingIn && !this.showSecondFactor
-    );
+    return this.args.model.canSignUp && !this.showSecondFactor;
   }
 
   get adminLoginPath() {
@@ -136,9 +129,16 @@ export default class Login extends Component {
 
         if (authResult && !authResult.error) {
           const destinationUrl = cookie("destination_url");
-          if (destinationUrl) {
+          const ssoDestinationUrl = cookie("sso_destination_url");
+
+          if (ssoDestinationUrl) {
+            removeCookie("sso_destination_url");
+            window.location.assign(ssoDestinationUrl);
+          } else if (destinationUrl) {
             removeCookie("destination_url");
             window.location.assign(destinationUrl);
+          } else if (this.args.model.referrerUrl) {
+            window.location.assign(this.args.model.referrerUrl);
           } else {
             window.location.reload();
           }
@@ -193,7 +193,7 @@ export default class Login extends Component {
     }
 
     if (isEmpty(this.loginName) || isEmpty(this.loginPassword)) {
-      this.flash = I18n.t("login.blank_username_or_password");
+      this.flash = i18n("login.blank_username_or_password");
       this.flashType = "error";
       return;
     }
@@ -254,7 +254,7 @@ export default class Login extends Component {
           this.dialog.alert(result.error);
         } else if (result.reason === "expired") {
           this.flash = htmlSafe(
-            I18n.t("login.password_expired", {
+            i18n("login.password_expired", {
               reset_url: getURL("/password-reset"),
             })
           );
@@ -290,6 +290,8 @@ export default class Login extends Component {
           removeCookie("destination_url");
 
           applyHiddenFormInputValue(destinationUrl, "redirect");
+        } else if (this.args.model.referrerUrl) {
+          applyHiddenFormInputValue(this.args.model.referrerUrl, "redirect");
         } else {
           applyHiddenFormInputValue(window.location.href, "redirect");
         }
@@ -312,20 +314,20 @@ export default class Login extends Component {
     } catch (e) {
       // Failed to login
       if (e.jqXHR && e.jqXHR.status === 429) {
-        this.flash = I18n.t("login.rate_limit");
+        this.flash = i18n("login.rate_limit");
         this.flashType = "error";
       } else if (
         e.jqXHR &&
         e.jqXHR.status === 503 &&
         e.jqXHR.responseJSON.error_type === "read_only"
       ) {
-        this.flash = I18n.t("read_only_mode.login_disabled");
+        this.flash = i18n("read_only_mode.login_disabled");
         this.flashType = "error";
       } else if (!areCookiesEnabled()) {
-        this.flash = I18n.t("login.cookies_error");
+        this.flash = i18n("login.cookies_error");
         this.flashType = "error";
       } else {
-        this.flash = I18n.t("login.error");
+        this.flash = i18n("login.error");
         this.flashType = "error";
       }
       this.loggingIn = false;
@@ -333,7 +335,7 @@ export default class Login extends Component {
   }
 
   @action
-  async externalLoginAction(loginMethod) {
+  externalLoginAction(loginMethod) {
     if (this.loginDisabled) {
       return;
     }

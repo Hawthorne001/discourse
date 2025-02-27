@@ -1,21 +1,26 @@
-import Component from "@ember/component";
-import { schedule } from "@ember/runloop";
 /* global Pikaday:true */
+import Component from "@ember/component";
+import { computed } from "@ember/object";
+import { schedule } from "@ember/runloop";
+import { classNames } from "@ember-decorators/component";
+import { on } from "@ember-decorators/object";
+import discourseComputed from "discourse/lib/decorators";
 import loadScript from "discourse/lib/load-script";
-import discourseComputed, { on } from "discourse-common/utils/decorators";
-import I18n from "discourse-i18n";
+import { i18n } from "discourse-i18n";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 
-export default Component.extend({
-  classNames: ["date-picker-wrapper"],
-  _picker: null,
-  value: null,
+@classNames("date-picker-wrapper")
+export default class DatePicker extends Component {
+  value = null;
+  minDate = null;
+  maxDate = null;
+  _picker = null;
 
   @discourseComputed("site.mobileView")
   inputType(mobileView) {
     return mobileView ? "date" : "text";
-  },
+  }
 
   @on("didInsertElement")
   _loadDatePicker() {
@@ -25,7 +30,7 @@ export default Component.extend({
       const container = document.getElementById(this.containerId);
       this._loadPikadayPicker(container);
     }
-  },
+  }
 
   _loadPikadayPicker(container) {
     loadScript("/javascripts/pikaday.js").then(() => {
@@ -36,9 +41,11 @@ export default Component.extend({
           bound: container === null,
           format: DATE_FORMAT,
           firstDay: 1,
+          minDate: this.minDate,
+          maxDate: this.maxDate,
           i18n: {
-            previousMonth: I18n.t("dates.previous_month"),
-            nextMonth: I18n.t("dates.next_month"),
+            previousMonth: i18n("dates.previous_month"),
+            nextMonth: i18n("dates.next_month"),
             months: moment.months(),
             weekdays: moment.weekdays(),
             weekdaysShort: moment.weekdaysMin(),
@@ -47,9 +54,15 @@ export default Component.extend({
         };
 
         this._picker = new Pikaday(Object.assign(options, this._opts()));
+
+        if (this.value) {
+          this._picker.setDate(moment(this.value).toDate(), true);
+        } else {
+          this._picker.setDate(null);
+        }
       });
     });
-  },
+  }
 
   _loadNativePicker() {
     const picker = this.element.querySelector("input.date-picker");
@@ -61,7 +74,7 @@ export default Component.extend({
       /* do nothing for native */
     };
     this._picker = picker;
-  },
+  }
 
   _handleSelection(value) {
     const formattedDate = moment(value).format(DATE_FORMAT);
@@ -73,7 +86,7 @@ export default Component.extend({
     if (this.onSelect) {
       this.onSelect(formattedDate);
     }
-  },
+  }
 
   @on("willDestroyElement")
   _destroy() {
@@ -81,21 +94,18 @@ export default Component.extend({
       this._picker.destroy();
       this._picker = null;
     }
-  },
+  }
 
-  @discourseComputed("_placeholder")
-  placeholder: {
-    get(_placeholder) {
-      return _placeholder || I18n.t("dates.placeholder");
-    },
+  @computed("_placeholder")
+  get placeholder() {
+    return this._placeholder || i18n("dates.placeholder");
+  }
 
-    set(value) {
-      this.set("_placeholder", value);
-      return value;
-    },
-  },
+  set placeholder(value) {
+    this.set("_placeholder", value);
+  }
 
   _opts() {
     return null;
-  },
-});
+  }
+}
