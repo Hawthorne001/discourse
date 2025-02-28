@@ -16,6 +16,7 @@ el:
       date_only: "%B %-d, %Y"
       long: "%B %-d, %Y, %l:%M%P"
       no_day: "%B %Y"
+      calendar_ics: "%Y%m%dT%H%M%SZ"
   date:
     month_names:
     -
@@ -51,10 +52,18 @@ el:
   remove_posts_deleted_by_author: "Διαγράφηκε από τον συγγραφέα"
   redirect_warning: "Δε μπορέσαμε να επαληθεύσουμε ότι ο σύνδεσμος που επιλέξατε ήταν πράγματι αναρτημένος στο forum. Αν θέλετε να προχωρήσετε ούτως ή άλλως, επιλέξτε τον παρακάτω σύνδεσμο."
   on_another_topic: "Σε άλλο θέμα"
+  topic_category_changed: "Από %{from} σε %{to}"
+  topic_tag_changed:
+    added_and_removed: "Προστέθηκε %{added} και αφαιρέθηκε %{removed}"
+    added: "Προστέθηκε %{added}"
+    removed: "Αφαιρέθηκε %{removed}"
   inline_oneboxer:
+    topic_page_title_post_number: "#%{post_number}"
     topic_page_title_post_number_by_user: "#%{post_number} από %{username}"
   components:
+    enabled_filter: "Ενεργοποιημένα"
     disabled_filter: "Απενεργοποιημένο"
+    updates_available_filter: "Διαθέσιμες Ενημερώσεις"
   themes:
     bad_color_scheme: "Δεν είναι δυνατή η ενημέρωση του θέματος, μη έγκυρη παλέτα χρωμάτων"
     other_error: "Κάτι πήγε στραβά κατά την ενημέρωση του θέματος"
@@ -79,7 +88,9 @@ el:
       number_value_not_valid_min_max: "Η τιμή πρέπει να είναι μεταξύ %{min} και %{max}."
       objects:
         required: "πρέπει να υπάρχει"
+        invalid_type: "%{type} δεν είναι έγκυρος τύπος"
         not_valid_integer_value: "πρέπει να είναι ακέραιος αριθμός"
+        string_value_not_valid_url: "πρέπει να είναι μια έγκυρη διεύθυνση URL"
     locale_errors:
       top_level_locale: "Το κλειδί ανώτατου επιπέδου σε ένα αρχείο τοπικών ρυθμίσεων πρέπει να συμφωνεί με το όνομα της τοπικής ρύθμισης"
       invalid_yaml: "Η μετάφραση YAML δεν είναι έγκυρη"
@@ -362,6 +373,8 @@ el:
         bio_raw: "Σχετικά με εμένα"
       user:
         password: "Κωδικός Πρόσβασης"
+      user_password:
+        password: "Κωδικός Πρόσβασης"
     errors:
       models:
         topic:
@@ -383,6 +396,14 @@ el:
             ip_address:
               blocked: "Δεν επιτρέπονται νεές εγγραφές από την IP διεύθυνσή σου."
               max_new_accounts_per_registration_ip: "Δεν επιτρέπονται νεές εγγραφές από την IP διεύθυνσή σου (το ανώτατο όριο έχει επιτευχθεί). Επικοινώνησε με ένα μέλος του προσωπικού."
+        user_password:
+          attributes:
+            password:
+              common: "είναι ένας από τους 10000 πιο κοινούς κωδικούς πρόσβασης. Παρακαλώ χρησιμοποιήστε έναν πιο ασφαλή κωδικό πρόσβασης."
+              same_as_username: "είναι το ίδιο με το όνομα χρήστη σας. Παρακαλώ χρησιμοποιήστε εναν πιο ασφαλή κωδικό πρόσβασης."
+              same_as_email: "είναι το ίδιο με το email σας. Παρακαλώ χρησιμοποιήστε έναν πιο ασφαλή κωδικό πρόσβασης."
+              same_as_current: "είναι ο ίδιος με τον τρέχοντα κωδικό."
+              unique_characters: "περιέχει πολλούς επαναλαμβανόμενους χαρακτήρες. Παρακαλώ χρησιμοποιήστε έναν πιο ασφαλή κωδικό πρόσβασης. "
         color_scheme_color:
           attributes:
             hex:
@@ -406,6 +427,10 @@ el:
           attributes:
             word:
               too_many: "Πάρα πολλές λέξεις για την ενέργεια"
+        sidebar_section_link:
+          attributes:
+            linkable_type:
+              invalid: "δεν είναι έγκυρο"
       <<: *errors
   general_category_name: "Γενικά"
   meta_category_name: "Σχολιασμός Ιστοσελίδας"
@@ -529,12 +554,9 @@ el:
     error: "Υπήρξε ένα σφάλμα κατά την αλλαγή της διεύθυνσης email σου. Ίσως αυτή η διεύθυνση είναι ήδη σε χρήση;"
     error_staged: "Υπήρξε ένα σφάλμα κατά την αλλαγή της διεύθυνσης email σου. Η δεύθυνση αυτή χρησιμοποιείται ήδη από αλλό χρήστη. "
     already_done: "Λυπούμαστε, αυτός ο σύνδεσμος επιβεβαίωσης του λογαριασμού σας δεν είναι πλέον έγκυρος. Ίσως η διεύθυνση email σας να έχει αλλάξει ήδη."
+    confirm: "Επιβεβαίωση"
   activation:
-    action: "Πατήστε εδώ για να ενεργοποιήσετε το λογαριασμό σας."
     already_done: "Συγνώμη, αυτός ο σύνδεσμος επιβεβαίωσης του λογαριασμού σας δεν είναι πλέον έγκυρος. Ίσως ο λογαριασμός σας είναι ήδη ενεργός;"
-    please_continue: "Ο νέος λογαριασμός σας έχει επιβεβαιωθεί. Θα μεταφερθείτε στην αρχική σελίδα."
-    continue_button: "Συνεχίστε στην %{site_name}"
-    welcome_to: "Καλώς ήλθατε στην %{site_name}!"
     approval_required: "Ένας συντονιστής θα πρέπει να εγκρίνει το νέο σας λογαριασμό πριν αποκτήσετε πρόσβαση στην ιστοσελίδα. Θα λάβετε ένα email όταν ο λογαριασμός σας εγκριθεί!"
     missing_session: "Δεν μπορούμε να ανιχνεύσουμε αν δημιουργήθηκε ο λογαριασμός σας, παρακαλούμε βεβαιωθείτε ότι έχετε ενεργοποιήσει τα cookies."
     activated: "Λυπάμαι, αυτός ο λογαριασμός έχει ήδη ενεργοποιηθεί."
@@ -689,6 +711,12 @@ el:
       yaxis: "Ημέρα"
     consolidated_page_views_browser_detection:
       yaxis: "Ημέρα"
+    site_traffic:
+      title: "Κίνηση ιστότοπου"
+      xaxis:
+        page_view_other: "Άλλη κίνηση"
+      yaxis: "Ημέρα"
+      description_link: "https://meta.discourse.org/t/understanding-pageviews-and-the-site-traffic-report/324062"
     dau_by_mau:
       xaxis: "Ημέρα"
     daily_engaged_users:
@@ -721,6 +749,8 @@ el:
       title: "Χρήστες ανάλογα με το Επίπεδο Εμπιστοσύνης"
       xaxis: "Επίπεδο Εμπιστοσύνης"
       yaxis: "Αριθμός χρηστών"
+      labels:
+        level: Επίπεδο
       description_link: "https://blog.discourse.org/2018/06/understanding-discourse-trust-levels/"
     users_by_type:
       xaxis: "Τύπος"
@@ -801,6 +831,9 @@ el:
       yaxis: "Θεάσεις σελίδας από Web Crawlers"
     page_view_total_reqs:
       title: "Προβολές σελίδας"
+      xaxis: "Ημέρα"
+      yaxis: "Σύνολο προβολών σελίδας"
+    page_view_legacy_total_reqs:
       xaxis: "Ημέρα"
       yaxis: "Σύνολο προβολών σελίδας"
     page_view_logged_in_mobile_reqs:
@@ -891,6 +924,11 @@ el:
       queue_size: "Ο αριθμός των εργασιών που βρίσκονται σε λίστα αναμονής είναι %{queue_size}, το οποίο είναι υψηλό. Αυτό θα μπορούσε να ενδείξει πρόβλημα με τις λειτουργία(ες) του Sidekiq ή θα πρέπει να προσθέσετε κι άλλους Sidekiq εργάτες. "
       ram: "Ο server σας έχει λιγότερο από 1 GB διαθέσιμης μνήμης. Προτείνεται η χρήση τουλάχιστον 1 GB μνήμης."
       subfolder_ends_in_slash: "Οι ρυθμίσεις του υποφακέλου σας δεν είναι σωστές. Το DISCOURSE_RELATIVE_URL_ROOT τελειώνει με κάθετη. "
+      email_polling_errored_recently:
+        one: "To Email polling έχει παράγει ένα σφάλμα τις τελευταίες 24 ώρες . Δείτε <a href='%{base_path}/logs' target='_blank'>τα αρχεία καταγραφής</a> για περισσότερες λεπτομέρειες. "
+        other: "To Email polling έχει παράγει %{count} σφάλματα τις τελευταίες 24 ώρες . Δείτε <a href='%{base_path}/logs' target='_blank'>τα αρχεία καταγραφής</a> για περισσότερες λεπτομέρειες. "
+      poll_pop3_timeout: "Το χρονικό όριο σύνδεσης με τον διακομιστή POP3 έληξε. Τα εισερχόμενα email δεν μπορούν να ανακτηθούν. Παρακαλώ ελέγξτε τις <a href='%{base_path}/admin/site_settings/category/email'>POP3 ρυθμίσεις σας</a> και τον πάροχο υπηρεσιών."
+      poll_pop3_auth_error: "Υπήρξε σφάλμα ελεχγου ταυτότητας κατά την σύνδεση με τον διακομιστή POP3. Παρακαλώ όπως ελέξετε τις <a href='%{base_path}/admin/site_settings/category/email'> POP3 ρυθμίσεις σας.</a> "
   site_settings:
     disabled: "απενεργοποιημένα"
     censored_words: "Αυτόματη αντικατάσταση λέξεων θα γίνεται με &#9632;&#9632;&#9632;&#9632;"
@@ -950,8 +988,6 @@ el:
     use_admin_ip_allowlist: "Οι διαχειριστές μπορούν να συνδέονται μόνο αν βρίσκονται σε μια διευθυνση IP καθορισμένη στη λίστα Screened IPs (Admin > Logs > Screened Ips)."
     blocked_ip_blocks: "Μια λίστα από private IP blocks η οποία ποτέ δεν θα ανιχνεύεται από το Discourse"
     allowed_internal_hosts: "Μια λίστα από internal hosts την οποία το discourse μπορεί να ανιχνεύει με ασφάλεια για oneboxing και άλλους λόγους"
-    allowed_iframes: "Μία λίστα από iframe src domain prefixes τα οποία το discourse μπορεί με ασφάλεια να επιτρέπει στις αναρτήσεις."
-    post_menu_hidden_items: "Οι επιλογές που θα κρυφτούν από προεπιλογή στο μενού της ανάρτησης, εκτός αν πατηθεί η επιλογή επέκτασης του μενού. "
     share_links: "Καθόρισε ποια αντικείμενα εμφανίζονται στον διάλογο διαμοιρασμού και με ποια σειρά."
     site_contact_username: "Ένα έγκυρο όνομα χρήστη των συνεργατών από το οποίο θα στέλνονται όλα τα αυτοματοποιημένα μηνύματα. Αν αφεθεί κενό, θα χρησιμοποιείται ο προκαθορισμένος λογαριασμός συστήματος. "
     send_welcome_message: "Στείλε σε όλους τους νέους χρήστες ένα μήνυμα καλωσορίσματος μαζί με ένα γρήγορο οδηγό έναρξης."
@@ -961,7 +997,6 @@ el:
     max_reply_history: "Μέγιστος αριθμός απαντήσεων προς επέκταση οταν επεκτείνεται 'ως απάντηση σε' "
     topics_per_period_in_top_summary: "Αριθμός κορυφαίων νημάτων που θα εμφανίζονται στην προκαθορισμένη σύνοψη κορυφαίων νημάτων. "
     topics_per_period_in_top_page: "Αριθμός κορυφαίων νημάτων που θα εμφανίζονται στην επέκταση 'Δείξε Περισσότερα' κορυφαία νήματα."
-    redirect_users_to_top_page: "Αυτόματα επαναπροσανατολίστε τους νέους και συχνούς απόντες χρήστες στη κορυφή της σελίδας."
     prioritize_username_in_ux: "Δίξε το όνομα χρήστη πρώτα στη σελίδα του χρήστη, την κάρτα χρήστη και στις δημοσιεύσεις (όταν είναι ανενεργό, φαίνεται πρώτα το όνομα)"
     email_token_valid_hours: "Τα tokens ανάκτησης κωδικού / ενεργοποίησης λογαριασμού παραμένουν έγκυρα για (ν) ώρες."
     log_out_strict: "Όταν αποσυνδεθείτε, ΟΛΕΣ οι δραστηριότητες σας σε ΟΛΕΣ τις συσκευές θα αποσυνδεθούν"
@@ -1092,7 +1127,6 @@ el:
     num_hours_to_close_topic: "Αριθμός ωρών παύσης ενός νήματος για παρέμβαση"
     auto_respond_to_flag_actions: "Ενεργοποίηση αυτόματης απάντησης όταν αφαιρείται μια επισήμανση."
     min_first_post_typing_time: "Ελάχιστος χρόνος σε χιλιοστά του δευτερολέπτου που ένας χρήστης θα πρέπει να πληκτρολογεί κατά τη διάρκεια της πρώτης ανάρτησης, εάν το όριο δεν επιτευχθεί τότε η ανάρτηση αυτόματα εισέρχεται στην ουρά αυτών που απαιτούν έγκριση. Θέτοντας τον ίσο με 0 απενεργοποιείται το όριο (δεν συνιστάται) "
-    auto_silence_fast_typers_on_first_post: "Αυτόματη σίγηση των χρηστών που δεν πληρούν το κριτήριο min_first_post_typing_time"
     auto_silence_fast_typers_max_trust_level: "Μέγιστο επίπεδο εμπιστοσύνης για την αυτόματη σίγηση σε περίπτωση γρήγορης πληκτρολόγησης"
     reply_by_email_address: "Πρότυπο για την απάντηση μέσω email της διεύθυνσης email εισερχομένων μηνυμάτων, για παράδειγμα: %%{reply_key}@reply.example.com or replies+%%{reply_key}@example.com"
     alternative_reply_by_email_addresses: "Λίστα εναλλακτικών προτύπων για την απάντηση μέσω email της διεύθυνσης email εισερχομένων μηνυμάτων, πχ: %%{reply_key}@reply.example.com|replies+%%{reply_key}@example.com"
@@ -1160,7 +1194,6 @@ el:
     automatically_unpin_topics: "Αυτόματο ξεκαρφίτσωμα των νημάτων, όταν ο χρήστης φτάνει στο κάτω μέρος."
     read_time_word_count: "Μέτρηση των λέξεων ανά λεπτό για να υπολογίσεις τον εκτιμώμενο χρόνο διαβάσματος."
     auto_handle_queued_age: "Αυτόματη διαχείριση εγγραφών σε αναμονή για έλεγχο μετά από τόσες ημέρες. Οι σημάνσεις θα αγνοηθούν. Αναρτήσεις σε ουρά και χρήστες θα αγνοηθούν. Θέσε 0 για απενεργοποίηση αυτής της λειτουργίας."
-    full_name_required: "Το ονοματεπώνυμο είναι απαραίτητο πεδίο για το προφίλ του χρήστη."
     enable_names: "Εμφάνιζε το πλήρες όνομα του χρήστη στο προφίλ τους, στην κάρτα χρήστη και στα email. Απενεργοποίησε για να κρύβεται το πλήρες όνομα παντού. "
     display_name_on_posts: "Να εμφανίζεται το πλήρες όνομα του χρήστη στις δημοσιεύσεις μαζί με το @όνομαχρήστη του."
     show_time_gap_days: "Αν δύο αναρτήσεις δημιουργηθούν με τόσες πολλές ημέρες μεταξύ τους, εμφάνιζε το χρονικό κενό στο θέμα. "
@@ -1229,15 +1262,6 @@ el:
       reply_by_email_disabled: "Θα πρέπει να ενεργοποιήσετε την απάντηση μέσω email πριν ενεργοποιήσετε αυτή τη ρύθμιση."
       min_username_length_range: "Δεν μπορείς να θέσεις το ελάχιστο πιο πάνω από το μέγιστο"
       max_username_length_range: "Δεν μπορείς να θέσεις το μέγιστο πιο κάτω από το ελάχιστο."
-    keywords:
-      clean_up_inactive_users_after_days:
-      - ""
-      - "ανενεργό"
-      - ""
-      purge_unactivated_users_grace_period_days:
-      - ""
-      - "ανενεργό"
-      - ""
   search:
     within_post: "#%{post_number} από %{username}"
     types:
@@ -1344,6 +1368,7 @@ el:
     reserved_username: "Αυτό το όνομα χρήστη δεν είναι επιτρεπτό."
     auth_complete: "Η ταυτοποιήση έχει ολοκληρωθεί."
     click_to_continue: "Κλικ εδώ για να συνεχίσετε."
+    second_factor_title: "Έλεγχος Ταυτότητας Δύο Παραγόντων"
     second_factor_backup_description: "Παρακαλώ εισαγάγετε έναν από τους εφεδρικούς κωδικούς σας:"
     second_factor_toggle:
       backup_code: "Χρησιμοποιήστε αντ 'αυτού έναν εφεδρικό κωδικό"
@@ -1761,6 +1786,9 @@ el:
     only_reply_by_email: "Απαντήστε σε αυτό το email για να αποκριθείς."
     visit_link_to_respond: "[Επισκέψου το νήμα](%{base_url}%{url}) για να αποκριθείς."
     posted_by: "Αναρτήθηκε από %{username} στις %{post_date}"
+    more_pm_participants:
+      one: "%{participants} και %{count} ακόμη"
+      other: "%{participants} και %{count} ακόμη"
     user_invited_to_private_message_pm_group:
       title: "Ο χρήστης προσκάλεσε ομάδα σε ΠΜ"
       subject_template: "[%{email_prefix}] %{username} προσκλήθηκε @%{group_name} σε ένα μήνυμα '%{topic_title}'"
@@ -2360,7 +2388,12 @@ el:
       privacy:
         fields:
           login_required:
-            placeholder: "Ιδιωτική"
+            label: "Ορατότητα"
+            choices:
+              public:
+                label: "Δημόσια"
+              private:
+                label: "Ιδιωτική"
       styling:
         fields:
           styling_preview:
@@ -2368,17 +2401,9 @@ el:
           homepage_style:
             choices:
               latest:
-                label: "Τελευταία Θέματα"
-              categories_only:
-                label: "Μόνο Κατηγορίες"
-              categories_with_featured_topics:
-                label: "Κατηγορίες με Προτεινόμενα Νήματα"
-              categories_and_latest_topics:
-                label: "Κατηγορίες και Τελευταία Νήματα"
-              categories_and_top_topics:
-                label: "Κατηγορίες και κορυφαία θέματα"
-              subcategories_with_featured_topics:
-                label: "Υποκατηγορίες με Προτεινόμενα Θέματα"
+                label: "Πρόσφατα"
+              hot:
+                label: "Δημοφιλή"
       corporate:
         fields:
           contact_url:
@@ -2400,6 +2425,7 @@ el:
       quoted: '%{username} σε παράθεσε στο "%{topic}" - %{site_title}'
       replied: '%{username} σου απάντησε στο "%{topic}" - %{site_title}'
       posted: '%{username} ανάρτησε στο "%{topic}" - %{site_title}'
+      private_message: 'Ο/Η %{username} σας έστειλε ένα προσωπικό μήνυμα στο "%{topic}" - %{site_title}'
       linked: '%{username} έκανε μια σύνδεση στην ανάρτηση που έκανες στο νήμα "%{topic}" - %{site_title}'
       watching_first_post: 'Ο/Η %{username} δημιούργησε ένα νέο θέμα "%{topic}" - %{site_title}'
       confirm_title: "Ενεργοποιημένες ειδοποιήσεις - %{site_title}"

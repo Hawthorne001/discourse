@@ -7,6 +7,12 @@
   {{on "keydown" this.onKeydown}}
 >
   <:body>
+    <p>{{i18n "flagging.review_process_description"}}</p>
+    <PluginOutlet
+      @name="after-flag-modal-review-process-description"
+      @connectorTagName="div"
+      @outletArgs={{hash post=@model.flagModel}}
+    />
     <form>
       <FlagSelection
         @nameKey={{this.selected.name_key}}
@@ -46,7 +52,7 @@
         class="btn-danger flag-modal__send-warning"
         @action={{this.createFlagAsWarning}}
         @disabled={{not this.submitEnabled}}
-        @icon="exclamation-triangle"
+        @icon="triangle-exclamation"
         @label="flagging.official_warning"
       />
     {{/if}}
@@ -63,7 +69,7 @@
         class="btn-danger flag-modal__flag-for-review"
         @action={{this.flagForReview}}
         @disabled={{not this.submitEnabled this.notifyModeratorsFlag}}
-        @icon="exclamation-triangle"
+        @icon="triangle-exclamation"
         @label="flagging.flag_for_review"
       />
     {{/if}}
@@ -73,7 +79,7 @@
         class="btn-danger delete-spammer flag-modal__delete-spammer"
         @action={{this.deleteSpammer}}
         @disabled={{not this.submitEnabled}}
-        @icon="exclamation-triangle"
+        @icon="triangle-exclamation"
         @label="flagging.delete_spammer"
       />
     {{/if}}

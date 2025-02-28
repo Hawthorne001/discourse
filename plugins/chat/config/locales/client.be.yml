@@ -54,6 +54,7 @@ be:
         tabs:
           members: Удзельнікі
           settings: Налады
+        remove_member: "выдаліць"
       new_message_modal:
         filter: "Filter"
       direct_message_creator:
@@ -108,6 +109,8 @@ be:
         last_reply: "апошні адказ"
         notifications:
           tracking:
+            title: "Сачыць"
+          watching:
             title: "Сачыць"
       draft_channel_screen:
         header: "новае паведамленне"

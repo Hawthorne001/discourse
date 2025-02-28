@@ -131,7 +131,9 @@ RSpec.describe Reviewable, type: :model do
       it "works with the reviewable by group" do
         SiteSetting.enable_category_group_moderation = true
         group = Fabricate(:group)
-        reviewable.reviewable_by_group_id = group.id
+        category = Fabricate(:category)
+        Fabricate(:category_moderation_group, category:, group:)
+        reviewable.category_id = category.id
         reviewable.save!
 
         expect(Reviewable.list_for(user, status: :pending)).to be_empty
@@ -147,7 +149,9 @@ RSpec.describe Reviewable, type: :model do
       it "doesn't allow review by group when disabled" do
         SiteSetting.enable_category_group_moderation = false
         group = Fabricate(:group)
-        reviewable.reviewable_by_group_id = group.id
+        category = Fabricate(:category)
+        Fabricate(:category_moderation_group, category:, group:)
+        reviewable.category_id = category.id
         reviewable.save!
 
         GroupUser.create!(group_id: group.id, user_id: user.id)
@@ -184,11 +188,18 @@ RSpec.describe Reviewable, type: :model do
           expect(reviewables).to contain_exactly(reviewable)
         end
 
-        it "Does not filter by status when status parameter is set to all" do
+        it "does not filter by status when status parameter is set to all" do
           rejected_reviewable =
             Fabricate(:reviewable, target: post, status: Reviewable.statuses[:rejected])
           reviewables = Reviewable.list_for(user, status: :all)
           expect(reviewables).to match_array [reviewable, rejected_reviewable]
+        end
+
+        it "does not include reviewables of unknown type" do
+          unknown_reviewable = Fabricate(:reviewable, target: post)
+          unknown_reviewable.update_column(:type, "UnknownPlugin")
+          reviewables = Reviewable.list_for(user, status: :all)
+          expect(reviewables).to match_array [reviewable]
         end
 
         it "supports sorting" do
@@ -213,16 +224,18 @@ RSpec.describe Reviewable, type: :model do
         end
 
         describe "Including pending queued posts even if they don't pass the minimum priority threshold" do
+          let(:queued_post) do
+            Fabricate(:reviewable_queued_post, score: 0, target: post, force_review: true)
+          end
+          let(:queued_user) { Fabricate(:reviewable_user, score: 0, force_review: true) }
+
           before do
             SiteSetting.reviewable_default_visibility = :high
             Reviewable.set_priorities(high: 10)
-            @queued_post =
-              Fabricate(:reviewable_queued_post, score: 0, target: post, force_review: true)
-            @queued_user = Fabricate(:reviewable_user, score: 0, force_review: true)
           end
 
           it "includes queued posts when searching for pending reviewables" do
-            expect(Reviewable.list_for(user)).to contain_exactly(@queued_post, @queued_user)
+            expect(Reviewable.list_for(user)).to contain_exactly(queued_post, queued_user)
           end
 
           it "excludes pending queued posts when applying a different status filter" do
@@ -266,12 +279,12 @@ RSpec.describe Reviewable, type: :model do
     fab!(:admin)
     fab!(:moderator)
     fab!(:group)
+    fab!(:category)
     fab!(:user) { Fabricate(:user, groups: [group]) }
     fab!(:admin_reviewable) { Fabricate(:reviewable, reviewable_by_moderator: false) }
     fab!(:mod_reviewable) { Fabricate(:reviewable, reviewable_by_moderator: true) }
-    fab!(:group_reviewable) do
-      Fabricate(:reviewable, reviewable_by_group: group, reviewable_by_moderator: false)
-    end
+    fab!(:category_moderation_group) { Fabricate(:category_moderation_group, category:, group:) }
+    fab!(:group_reviewable) { Fabricate(:reviewable, reviewable_by_moderator: false, category:) }
 
     context "for admins" do
       it "returns a list of pending reviewables that haven't been seen by the user" do
@@ -326,6 +339,89 @@ RSpec.describe Reviewable, type: :model do
     expect(Reviewable.valid_type?("Reviewable")).to eq(false)
     expect(Reviewable.valid_type?("ReviewableDoesntExist")).to eq(false)
     expect(Reviewable.valid_type?("User")).to eq(false)
+  end
+
+  describe ".source_for" do
+    it "returns the correct source" do
+      expect(Reviewable.source_for(ReviewablePost)).to eq("core")
+      expect(Reviewable.source_for(ReviewableFlaggedPost)).to eq("core")
+      expect(Reviewable.source_for(ReviewableQueuedPost)).to eq("core")
+      expect(Reviewable.source_for(ReviewableUser)).to eq("core")
+      expect(Reviewable.source_for("NonExistentType")).to eq("unknown")
+    end
+  end
+
+  describe ".unknown_types_and_sources" do
+    it "returns an empty array when no unknown types are present" do
+      expect(Reviewable.unknown_types_and_sources).to eq([])
+    end
+
+    context "with reviewables of unknown type or sources" do
+      fab!(:core_type) do
+        type = Fabricate(:reviewable)
+        type.update_columns(type: "ReviewableDoesntExist", type_source: "core")
+        type
+      end
+
+      fab!(:known_core_type) do
+        type = Fabricate(:reviewable)
+        type.update_columns(type: "ReviewableFlaggedPost", type_source: "core")
+        type
+      end
+
+      fab!(:unknown_type) do
+        type = Fabricate(:reviewable)
+        type.update_columns(type: "UnknownType", type_source: "unknown")
+        type
+      end
+
+      fab!(:plugin_type) do
+        type = Fabricate(:reviewable)
+        type.update_columns(type: "PluginReviewableDoesntExist", type_source: "my-plugin")
+        type
+      end
+
+      fab!(:plugin_type2) do
+        type = Fabricate(:reviewable)
+        type.update_columns(type: "PluginReviewableStillDoesntExist", type_source: "my-plugin")
+        type
+      end
+
+      fab!(:plugin_type3) do
+        type = Fabricate(:reviewable)
+        type.update_columns(
+          type: "AnotherPluginReviewableDoesntExist",
+          type_source: "another-plugin",
+        )
+        type
+      end
+
+      fab!(:plugin_type4) do
+        type = Fabricate(:reviewable)
+        type.update_columns(type: "ThisIsGettingSilly", type_source: "zzz-last-plugin")
+        type
+      end
+
+      fab!(:unknown_type2) do
+        type = Fabricate(:reviewable)
+        type.update_columns(type: "AnotherUnknownType", type_source: "unknown")
+        type
+      end
+
+      it "returns an array of unknown types, sorted by source (with 'unknown' always last), then by type" do
+        expect(Reviewable.unknown_types_and_sources).to eq(
+          [
+            { type: "AnotherPluginReviewableDoesntExist", source: "another-plugin" },
+            { type: "ReviewableDoesntExist", source: "core" },
+            { type: "PluginReviewableDoesntExist", source: "my-plugin" },
+            { type: "PluginReviewableStillDoesntExist", source: "my-plugin" },
+            { type: "ThisIsGettingSilly", source: "zzz-last-plugin" },
+            { type: "AnotherUnknownType", source: "unknown" },
+            { type: "UnknownType", source: "unknown" },
+          ],
+        )
+      end
+    end
   end
 
   describe "events" do
@@ -617,6 +713,45 @@ RSpec.describe Reviewable, type: :model do
     end
   end
 
+  describe "#actions_for" do
+    fab!(:reviewable) { Fabricate(:reviewable_queued_post) }
+    fab!(:user)
+
+    it "gets the bundles and actions for a reviewable" do
+      actions = reviewable.actions_for(user.guardian)
+      expect(actions.bundles.map(&:id)).to eq(%w[approve_post reject_post revise_and_reject_post])
+      expect(actions.bundles.find { |b| b.id == "approve_post" }.actions.map(&:id)).to eq(
+        ["approve_post"],
+      )
+      expect(actions.bundles.find { |b| b.id == "reject_post" }.actions.map(&:id)).to eq(
+        ["reject_post"],
+      )
+      expect(actions.bundles.find { |b| b.id == "revise_and_reject_post" }.actions.map(&:id)).to eq(
+        ["revise_and_reject_post"],
+      )
+    end
+
+    describe "handling empty bundles" do
+      class ReviewableTestRecord < Reviewable
+        def build_actions(actions, guardian, args)
+          actions.add(:approve_post) do |action|
+            action.icon = "check"
+            action.label = "reviewables.actions.approve_post.title"
+          end
+          actions.add_bundle("empty_bundle", icon: "xmark", label: "Empty Bundle")
+        end
+      end
+
+      it "does not return empty bundles with no actions" do
+        actions = ReviewableTestRecord.new.actions_for(user.guardian)
+        expect(actions.bundles.map(&:id)).to eq(%w[approve_post])
+        expect(actions.bundles.find { |b| b.id == "approve_post" }.actions.map(&:id)).to eq(
+          ["approve_post"],
+        )
+      end
+    end
+  end
+
   describe "default actions" do
     let(:reviewable) { Reviewable.new }
     let(:actions) { Reviewable::Actions.new(reviewable, Guardian.new) }
@@ -638,12 +773,12 @@ RSpec.describe Reviewable, type: :model do
 
   describe ".unseen_reviewable_count" do
     fab!(:group)
+    fab!(:category)
     fab!(:user)
     fab!(:admin_reviewable) { Fabricate(:reviewable, reviewable_by_moderator: false) }
     fab!(:mod_reviewable) { Fabricate(:reviewable, reviewable_by_moderator: true) }
-    fab!(:group_reviewable) do
-      Fabricate(:reviewable, reviewable_by_moderator: false, reviewable_by_group: group)
-    end
+    fab!(:category_moderation_group) { Fabricate(:category_moderation_group, category:, group:) }
+    fab!(:group_reviewable) { Fabricate(:reviewable, reviewable_by_moderator: false, category:) }
 
     it "doesn't include reviewables that can't be seen by the user" do
       SiteSetting.enable_category_group_moderation = true

@@ -1,12 +1,20 @@
 import Controller from "@ember/controller";
+import { action } from "@ember/object";
 import { next } from "@ember/runloop";
+import { service } from "@ember/service";
 import { underscore } from "@ember/string";
 import { isPresent } from "@ember/utils";
-import discourseComputed from "discourse-common/utils/decorators";
-import I18n from "discourse-i18n";
+import { ajax } from "discourse/lib/ajax";
+import { popupAjaxError } from "discourse/lib/ajax-error";
+import { REVIEWABLE_UNKNOWN_TYPE_SOURCE } from "discourse/lib/constants";
+import discourseComputed from "discourse/lib/decorators";
+import { i18n } from "discourse-i18n";
 
-export default Controller.extend({
-  queryParams: [
+export default class ReviewIndexController extends Controller {
+  @service currentUser;
+  @service dialog;
+  @service toasts;
+  queryParams = [
     "priority",
     "type",
     "status",
@@ -18,26 +26,26 @@ export default Controller.extend({
     "to_date",
     "sort_order",
     "additional_filters",
-  ],
-  type: null,
-  status: "pending",
-  priority: "low",
-  category_id: null,
-  reviewables: null,
-  topic_id: null,
-  filtersExpanded: false,
-  username: "",
-  reviewed_by: "",
-  from_date: null,
-  to_date: null,
-  sort_order: null,
-  additional_filters: null,
+    "flagged_by",
+    "score_type",
+  ];
 
-  init(...args) {
-    this._super(...args);
-    this.set("priority", this.siteSettings.reviewable_default_visibility);
-    this.set("filtersExpanded", this.site.desktopView);
-  },
+  type = null;
+  status = "pending";
+  priority = this.siteSettings.reviewable_default_visibility;
+  category_id = null;
+  reviewables = null;
+  topic_id = null;
+  filtersExpanded = this.site.desktopView;
+  username = "";
+  reviewed_by = "";
+  flagged_by = "";
+  from_date = null;
+  to_date = null;
+  sort_order = null;
+  additional_filters = null;
+  filterScoreType = null;
+  unknownTypeSource = REVIEWABLE_UNKNOWN_TYPE_SOURCE;
 
   @discourseComputed("reviewableTypes")
   allTypes() {
@@ -46,20 +54,25 @@ export default Controller.extend({
 
       return {
         id: type,
-        name: I18n.t(`review.types.${translationKey}.title`),
+        name: i18n(`review.types.${translationKey}.title`),
       };
     });
-  },
+  }
+
+  @discourseComputed("scoreTypes")
+  allScoreTypes() {
+    return this.scoreTypes || [];
+  }
 
   @discourseComputed
   priorities() {
     return ["any", "low", "medium", "high"].map((priority) => {
       return {
         id: priority,
-        name: I18n.t(`review.filters.priority.${priority}`),
+        name: i18n(`review.filters.priority.${priority}`),
       };
     });
-  },
+  }
 
   @discourseComputed
   sortOrders() {
@@ -67,11 +80,11 @@ export default Controller.extend({
       (order) => {
         return {
           id: order,
-          name: I18n.t(`review.filters.orders.${order}`),
+          name: i18n(`review.filters.orders.${order}`),
         };
       }
     );
-  },
+  }
 
   @discourseComputed
   statuses() {
@@ -84,112 +97,149 @@ export default Controller.extend({
       "reviewed",
       "all",
     ].map((id) => {
-      return { id, name: I18n.t(`review.statuses.${id}.title`) };
+      return { id, name: i18n(`review.statuses.${id}.title`) };
     });
-  },
+  }
 
   @discourseComputed("filtersExpanded")
   toggleFiltersIcon(filtersExpanded) {
     return filtersExpanded ? "chevron-up" : "chevron-down";
-  },
+  }
 
   setRange(range) {
     this.setProperties(range);
-  },
+  }
 
   refreshModel() {
     next(() => this.send("refreshRoute"));
-  },
+  }
 
-  actions: {
-    remove(ids) {
-      if (!ids) {
-        return;
-      }
+  @discourseComputed("unknownReviewableTypes")
+  displayUnknownReviewableTypesWarning(unknownReviewableTypes) {
+    return unknownReviewableTypes?.length > 0 && this.currentUser.admin;
+  }
 
-      let newList = this.reviewables.reject((reviewable) => {
-        return ids.includes(reviewable.id);
-      });
+  @action
+  remove(ids) {
+    if (!ids) {
+      return;
+    }
 
-      if (newList.length === 0) {
-        this.refreshModel();
-      } else {
-        this.reviewables.setObjects(newList);
-      }
-    },
+    let newList = this.reviewables.reject((reviewable) => {
+      return ids.includes(reviewable.id);
+    });
 
-    resetTopic() {
-      this.set("topic_id", null);
+    if (newList.length === 0) {
       this.refreshModel();
-    },
+    } else {
+      this.reviewables.setObjects(newList);
+    }
+  }
 
-    refresh() {
-      const currentStatus = this.status;
-      const nextStatus = this.filterStatus;
-      const currentOrder = this.sort_order;
-      let nextOrder = this.filterSortOrder;
+  @action
+  resetTopic() {
+    this.set("topic_id", null);
+    this.refreshModel();
+  }
 
-      const createdAtStatuses = ["reviewed", "all"];
-      const priorityStatuses = [
-        "approved",
-        "rejected",
-        "deleted",
-        "ignored",
-        "pending",
-      ];
+  @action
+  ignoreAllUnknownTypes() {
+    return this.dialog.deleteConfirm({
+      message: i18n("review.unknown.delete_confirm"),
+      didConfirm: async () => {
+        try {
+          await ajax("/admin/unknown_reviewables/destroy", {
+            type: "delete",
+          });
+          this.set("unknownReviewableTypes", []);
+          this.toasts.success({
+            data: { message: i18n("review.unknown.ignore_success") },
+          });
+        } catch (e) {
+          popupAjaxError(e);
+        }
+      },
+    });
+  }
 
-      if (
-        createdAtStatuses.includes(currentStatus) &&
-        currentOrder === "created_at" &&
-        priorityStatuses.includes(nextStatus) &&
-        nextOrder === "created_at"
-      ) {
-        nextOrder = "score";
-      }
+  @action
+  refresh() {
+    const currentStatus = this.status;
+    const nextStatus = this.filterStatus;
+    const currentOrder = this.sort_order;
+    let nextOrder = this.filterSortOrder;
 
-      if (
-        priorityStatuses.includes(currentStatus) &&
-        currentOrder === "score" &&
-        createdAtStatuses.includes(nextStatus) &&
-        nextOrder === "score"
-      ) {
-        nextOrder = "created_at";
-      }
+    const createdAtStatuses = ["reviewed", "all"];
+    const priorityStatuses = [
+      "approved",
+      "rejected",
+      "deleted",
+      "ignored",
+      "pending",
+    ];
 
-      this.setProperties({
-        type: this.filterType,
-        priority: this.filterPriority,
-        status: this.filterStatus,
-        category_id: this.filterCategoryId,
-        username: this.filterUsername,
-        reviewed_by: this.filterReviewedBy,
-        from_date: isPresent(this.filterFromDate)
-          ? this.filterFromDate.toISOString(true).split("T")[0]
-          : null,
-        to_date: isPresent(this.filterToDate)
-          ? this.filterToDate.toISOString(true).split("T")[0]
-          : null,
-        sort_order: nextOrder,
-        additional_filters: JSON.stringify(this.additionalFilters),
-      });
+    if (
+      createdAtStatuses.includes(currentStatus) &&
+      currentOrder === "created_at" &&
+      priorityStatuses.includes(nextStatus) &&
+      nextOrder === "created_at"
+    ) {
+      nextOrder = "score";
+    }
 
-      this.refreshModel();
-    },
+    if (
+      priorityStatuses.includes(currentStatus) &&
+      currentOrder === "score" &&
+      createdAtStatuses.includes(nextStatus) &&
+      nextOrder === "score"
+    ) {
+      nextOrder = "created_at";
+    }
 
-    loadMore() {
-      return this.reviewables.loadMore();
-    },
+    this.setProperties({
+      type: this.filterType,
+      priority: this.filterPriority,
+      status: this.filterStatus,
+      category_id: this.filterCategoryId,
+      username: this.filterUsername,
+      reviewed_by: this.filterReviewedBy,
+      flagged_by: this.filterFlaggedBy,
+      score_type: this.filterScoreType,
+      from_date: isPresent(this.filterFromDate)
+        ? this.filterFromDate.toISOString(true).split("T")[0]
+        : null,
+      to_date: isPresent(this.filterToDate)
+        ? this.filterToDate.toISOString(true).split("T")[0]
+        : null,
+      sort_order: nextOrder,
+      additional_filters: JSON.stringify(this.additionalFilters),
+    });
 
-    toggleFilters() {
-      this.toggleProperty("filtersExpanded");
-    },
+    this.refreshModel();
+  }
 
-    updateFilterReviewedBy(selected) {
-      this.set("filterReviewedBy", selected.firstObject);
-    },
+  @action
+  loadMore() {
+    return this.reviewables.loadMore();
+  }
 
-    updateFilterUsername(selected) {
-      this.set("filterUsername", selected.firstObject);
-    },
-  },
-});
+  @action
+  toggleFilters() {
+    this.toggleProperty("filtersExpanded");
+  }
+
+  @action
+  updateFilterReviewedBy(selected) {
+    this.set("filterReviewedBy", selected.firstObject);
+  }
+
+  @action
+  updateFilterFlaggedBy(selected) {
+    this.set("filterFlaggedBy", selected.firstObject);
+  }
+
+  @action
+  updateFilterUsername(selected) {
+    this.set("filterUsername", selected.firstObject);
+  }
+}

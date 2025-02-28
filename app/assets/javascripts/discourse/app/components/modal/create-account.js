@@ -1,7 +1,8 @@
+import { tracked } from "@glimmer/tracking";
 import { A } from "@ember/array";
 import Component from "@ember/component";
 import EmberObject, { action } from "@ember/object";
-import { alias, notEmpty } from "@ember/object/computed";
+import { dependentKeyCompat } from "@ember/object/compat";
 import { service } from "@ember/service";
 import { isEmpty } from "@ember/utils";
 import { observes } from "@ember-decorators/object";
@@ -9,63 +10,93 @@ import { Promise } from "rsvp";
 import { ajax } from "discourse/lib/ajax";
 import { setting } from "discourse/lib/computed";
 import cookie, { removeCookie } from "discourse/lib/cookie";
+import discourseDebounce from "discourse/lib/debounce";
+import discourseComputed, { bind } from "discourse/lib/decorators";
+import NameValidationHelper from "discourse/lib/name-validation-helper";
+import PasswordValidationHelper from "discourse/lib/password-validation-helper";
 import { userPath } from "discourse/lib/url";
+import UsernameValidationHelper from "discourse/lib/username-validation-helper";
 import { emailValid } from "discourse/lib/utilities";
-import { wavingHandURL } from "discourse/lib/waving-hand-url";
-import NameValidation from "discourse/mixins/name-validation";
-import PasswordValidation from "discourse/mixins/password-validation";
 import UserFieldsValidation from "discourse/mixins/user-fields-validation";
-import UsernameValidation from "discourse/mixins/username-validation";
 import { findAll } from "discourse/models/login-method";
 import User from "discourse/models/user";
-import discourseDebounce from "discourse-common/lib/debounce";
-import discourseComputed, { bind } from "discourse-common/utils/decorators";
-import I18n from "discourse-i18n";
+import { i18n } from "discourse-i18n";
 
 export default class CreateAccount extends Component.extend(
-  PasswordValidation,
-  UsernameValidation,
-  NameValidation,
   UserFieldsValidation
 ) {
   @service site;
   @service siteSettings;
   @service login;
 
+  @tracked isDeveloper = false;
+  @tracked accountName = this.model.accountName;
+  @tracked accountEmail = this.model.accountEmail;
+  @tracked accountUsername = this.model.accountUsername;
+  @tracked accountPassword = this.model.accountPassword;
+  @tracked authOptions = this.model.authOptions;
+  @tracked skipConfirmation = this.model.skipConfirmation;
   accountChallenge = 0;
   accountHoneypot = 0;
   formSubmitted = false;
   rejectedEmails = A();
   prefilledUsername = null;
   userFields = null;
-  isDeveloper = false;
   maskPassword = true;
+  emailValidationVisible = false;
+  nameValidationHelper = new NameValidationHelper(this);
+  usernameValidationHelper = new UsernameValidationHelper(this);
+  passwordValidationHelper = new PasswordValidationHelper(this);
 
-  @notEmpty("model.authOptions") hasAuthOptions;
   @setting("enable_local_logins") canCreateLocal;
   @setting("require_invite_code") requireInviteCode;
-
-  // For UsernameValidation mixin
-  @alias("model.authOptions") authOptions;
-  @alias("model.accountEmail") accountEmail;
-  @alias("model.accountUsername") accountUsername;
-  // For NameValidation mixin
-  @alias("model.accountName") accountName;
 
   init() {
     super.init(...arguments);
 
     if (cookie("email")) {
-      this.set("model.accountEmail", cookie("email"));
+      this.accountEmail = cookie("email");
     }
 
     this.fetchConfirmationValue();
 
     if (this.model.skipConfirmation) {
-      this.performAccountCreation().finally(() =>
-        this.set("model.skipConfirmation", false)
+      this.performAccountCreation().finally(
+        () => (this.skipConfirmation = false)
       );
     }
+  }
+
+  @action
+  setAccountUsername(event) {
+    this.accountUsername = event.target.value;
+  }
+
+  @dependentKeyCompat
+  get usernameValidation() {
+    return this.usernameValidationHelper.usernameValidation;
+  }
+
+  get passwordValidation() {
+    return this.passwordValidationHelper.passwordValidation;
+  }
+
+  get nameTitle() {
+    return this.nameValidationHelper.nameTitle;
+  }
+
+  get nameValidation() {
+    return this.nameValidationHelper.nameValidation;
+  }
+
+  @dependentKeyCompat
+  get hasAuthOptions() {
+    return !isEmpty(this.authOptions);
+  }
+
+  @dependentKeyCompat
+  get forceValidationReason() {
+    return this.nameValidationHelper.forceValidationReason;
   }
 
   @bind
@@ -87,13 +118,10 @@ export default class CreateAccount extends Component.extend(
     }
   }
 
-  @discourseComputed(
-    "hasAuthOptions",
-    "canCreateLocal",
-    "model.skipConfirmation"
-  )
-  showCreateForm(hasAuthOptions, canCreateLocal, skipConfirmation) {
-    return (hasAuthOptions || canCreateLocal) && !skipConfirmation;
+  get showCreateForm() {
+    return (
+      (this.hasAuthOptions || this.canCreateLocal) && !this.skipConfirmation
+    );
   }
 
   @discourseComputed("site.desktopView", "hasAuthOptions")
@@ -104,11 +132,6 @@ export default class CreateAccount extends Component.extend(
   @discourseComputed("formSubmitted")
   submitDisabled() {
     return this.formSubmitted;
-  }
-
-  @discourseComputed()
-  wavingHandURL() {
-    return wavingHandURL();
   }
 
   @discourseComputed("userFields", "hasAtLeastOneLoginButton", "hasAuthOptions")
@@ -126,32 +149,58 @@ export default class CreateAccount extends Component.extend(
     return classes.join(" ");
   }
 
-  @discourseComputed("model.authOptions", "model.authOptions.can_edit_username")
-  usernameDisabled(authOptions, canEditUsername) {
-    return authOptions && !canEditUsername;
+  get usernameDisabled() {
+    return this.authOptions && !this.authOptions.can_edit_username;
   }
 
-  @discourseComputed("model.authOptions", "model.authOptions.can_edit_name")
-  nameDisabled(authOptions, canEditName) {
-    return authOptions && !canEditName;
+  get nameDisabled() {
+    return this.authOptions && !this.authOptions.can_edit_name;
+  }
+
+  @discourseComputed
+  showFullname() {
+    return this.site.full_name_visible_in_signup;
   }
 
   @discourseComputed
   fullnameRequired() {
+    return this.site.full_name_required_for_signup;
+  }
+
+  @discourseComputed(
+    "emailValidation.ok",
+    "emailValidation.reason",
+    "emailValidationVisible"
+  )
+  showEmailValidation(
+    emailValidationOk,
+    emailValidationReason,
+    emailValidationVisible
+  ) {
     return (
-      this.siteSettings.full_name_required || this.siteSettings.enable_names
+      emailValidationOk || (emailValidationReason && emailValidationVisible)
     );
   }
 
-  @discourseComputed("model.authOptions.auth_provider")
-  passwordRequired(authProvider) {
-    return isEmpty(authProvider);
+  get showPasswordValidation() {
+    return this.passwordValidation.ok || this.passwordValidation.reason;
+  }
+
+  get showUsernameInstructions() {
+    return (
+      this.siteSettings.show_signup_form_username_instructions &&
+      !this.usernameValidation.reason
+    );
+  }
+
+  get passwordRequired() {
+    return isEmpty(this.authOptions?.auth_provider);
   }
 
   @discourseComputed
   disclaimerHtml() {
     if (this.site.tos_url && this.site.privacy_policy_url) {
-      return I18n.t("create_account.disclaimer", {
+      return i18n("create_account.disclaimer", {
         tos_link: this.site.tos_url,
         privacy_link: this.site.privacy_policy_url,
       });
@@ -162,7 +211,7 @@ export default class CreateAccount extends Component.extend(
   @discourseComputed(
     "serverAccountEmail",
     "serverEmailValidation",
-    "model.accountEmail",
+    "accountEmail",
     "rejectedEmails.[]",
     "forceValidationReason"
   )
@@ -187,8 +236,8 @@ export default class CreateAccount extends Component.extend(
     if (isEmpty(email)) {
       return EmberObject.create(
         Object.assign(failedAttrs, {
-          message: I18n.t("user.email.required"),
-          reason: forceValidationReason ? I18n.t("user.email.required") : null,
+          message: i18n("user.email.required"),
+          reason: forceValidationReason ? i18n("user.email.required") : null,
         })
       );
     }
@@ -196,20 +245,17 @@ export default class CreateAccount extends Component.extend(
     if (rejectedEmails.includes(email) || !emailValid(email)) {
       return EmberObject.create(
         Object.assign(failedAttrs, {
-          reason: I18n.t("user.email.invalid"),
+          reason: i18n("user.email.invalid"),
         })
       );
     }
 
-    if (
-      this.get("model.authOptions.email") === email &&
-      this.get("model.authOptions.email_valid")
-    ) {
+    if (this.authOptions?.email === email && this.authOptions?.email_valid) {
       return EmberObject.create({
         ok: true,
-        reason: I18n.t("user.email.authenticated", {
+        reason: i18n("user.email.authenticated", {
           provider: this.authProviderDisplayName(
-            this.get("model.authOptions.auth_provider")
+            this.authOptions?.auth_provider
           ),
         }),
       });
@@ -217,20 +263,22 @@ export default class CreateAccount extends Component.extend(
 
     return EmberObject.create({
       ok: true,
-      reason: I18n.t("user.email.ok"),
+      reason: i18n("user.email.ok"),
     });
   }
 
   @action
   checkEmailAvailability() {
+    this.set("emailValidationVisible", Boolean(this.emailValidation.reason));
+
     if (
       !this.emailValidation.ok ||
-      this.serverAccountEmail === this.model.accountEmail
+      this.serverAccountEmail === this.accountEmail
     ) {
       return;
     }
 
-    return User.checkEmail(this.model.accountEmail)
+    return User.checkEmail(this.accountEmail)
       .then((result) => {
         if (this.isDestroying || this.isDestroyed) {
           return;
@@ -238,7 +286,7 @@ export default class CreateAccount extends Component.extend(
 
         if (result.failed) {
           this.setProperties({
-            serverAccountEmail: this.model.accountEmail,
+            serverAccountEmail: this.accountEmail,
             serverEmailValidation: EmberObject.create({
               failed: true,
               element: document.querySelector("#new-account-email"),
@@ -247,10 +295,10 @@ export default class CreateAccount extends Component.extend(
           });
         } else {
           this.setProperties({
-            serverAccountEmail: this.model.accountEmail,
+            serverAccountEmail: this.accountEmail,
             serverEmailValidation: EmberObject.create({
               ok: true,
-              reason: I18n.t("user.email.ok"),
+              reason: i18n("user.email.ok"),
             }),
           });
         }
@@ -263,15 +311,10 @@ export default class CreateAccount extends Component.extend(
       });
   }
 
-  @discourseComputed(
-    "model.accountEmail",
-    "model.authOptions.email",
-    "model.authOptions.email_valid"
-  )
-  emailDisabled() {
+  get emailDisabled() {
     return (
-      this.get("model.authOptions.email") === this.model.accountEmail &&
-      this.get("model.authOptions.email_valid")
+      this.authOptions?.email === this.accountEmail &&
+      this.authOptions?.email_valid
     );
   }
 
@@ -282,25 +325,28 @@ export default class CreateAccount extends Component.extend(
     return matchingProvider ? matchingProvider.get("prettyName") : providerName;
   }
 
-  @observes("emailValidation", "model.accountEmail")
+  @observes("emailValidation", "accountEmail")
   prefillUsername() {
     if (this.prefilledUsername) {
       // If username field has been filled automatically, and email field just changed,
       // then remove the username.
-      if (this.model.accountUsername === this.prefilledUsername) {
-        this.set("model.accountUsername", "");
+      if (this.accountUsername === this.prefilledUsername) {
+        this.accountUsername = "";
       }
       this.set("prefilledUsername", null);
     }
     if (
       this.get("emailValidation.ok") &&
-      (isEmpty(this.model.accountUsername) ||
-        this.get("model.authOptions.email"))
+      (isEmpty(this.accountUsername) || this.authOptions?.email)
     ) {
       // If email is valid and username has not been entered yet,
       // or email and username were filled automatically by 3rd party auth,
       // then look for a registered username that matches the email.
-      discourseDebounce(this, this.fetchExistingUsername, 500);
+      discourseDebounce(
+        this,
+        this.usernameValidationHelper.fetchExistingUsername,
+        500
+      );
     }
   }
 
@@ -351,16 +397,16 @@ export default class CreateAccount extends Component.extend(
     }
 
     const attrs = {
-      accountName: this.model.accountName,
-      accountEmail: this.model.accountEmail,
+      accountName: this.accountName,
+      accountEmail: this.accountEmail,
       accountPassword: this.accountPassword,
-      accountUsername: this.model.accountUsername,
+      accountUsername: this.accountUsername,
       accountChallenge: this.accountChallenge,
       inviteCode: this.inviteCode,
       accountPasswordConfirm: this.accountHoneypot,
     };
 
-    const destinationUrl = this.get("model.authOptions.destination_url");
+    const destinationUrl = this.authOptions?.destination_url;
 
     if (!isEmpty(destinationUrl)) {
       cookie("destination_url", destinationUrl, { path: "/" });
@@ -381,7 +427,7 @@ export default class CreateAccount extends Component.extend(
           return;
         }
 
-        this.set("isDeveloper", false);
+        this.isDeveloper = false;
         if (result.success) {
           // invalidate honeypot
           this._challengeExpiry = 1;
@@ -399,9 +445,9 @@ export default class CreateAccount extends Component.extend(
           }
           return new Promise(() => {}); // This will never resolve, the page will reload instead
         } else {
-          this.set("flash", result.message || I18n.t("create_account.failed"));
+          this.set("flash", result.message || i18n("create_account.failed"));
           if (result.is_developer) {
-            this.set("isDeveloper", true);
+            this.isDeveloper = true;
           }
           if (
             result.errors &&
@@ -411,12 +457,10 @@ export default class CreateAccount extends Component.extend(
           ) {
             this.rejectedEmails.pushObject(result.values.email);
           }
-          if (
-            result.errors &&
-            result.errors.password &&
-            result.errors.password.length > 0
-          ) {
-            this.rejectedPasswords.pushObject(attrs.accountPassword);
+          if (result.errors?.["user_password.password"]?.length > 0) {
+            this.passwordValidationHelper.rejectedPasswords.push(
+              attrs.accountPassword
+            );
           }
           this.set("formSubmitted", false);
           removeCookie("destination_url");
@@ -425,22 +469,27 @@ export default class CreateAccount extends Component.extend(
       () => {
         this.set("formSubmitted", false);
         removeCookie("destination_url");
-        return this.set("flash", I18n.t("create_account.failed"));
+        return this.set("flash", i18n("create_account.failed"));
       }
     );
   }
 
-  @discourseComputed(
-    "model.authOptions.associate_url",
-    "model.authOptions.auth_provider"
-  )
-  associateHtml(url, provider) {
+  get associateHtml() {
+    const url = this.authOptions?.associate_url;
     if (!url) {
       return;
     }
-    return I18n.t("create_account.associate", {
+    return i18n("create_account.associate", {
       associate_link: url,
-      provider: I18n.t(`login.${provider}.name`),
+      provider: i18n(`login.${this.authOptions.auth_provider}.name`),
+    });
+  }
+
+  @action
+  scrollInputIntoView(event) {
+    event.target.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
     });
   }
 
@@ -458,7 +507,8 @@ export default class CreateAccount extends Component.extend(
   @action
   createAccount() {
     this.set("flash", "");
-    this.set("forceValidationReason", true);
+    this.nameValidationHelper.forceValidationReason = true;
+    this.set("emailValidationVisible", true);
 
     const validation = [
       this.emailValidation,
@@ -484,7 +534,7 @@ export default class CreateAccount extends Component.extend(
       return;
     }
 
-    this.set("forceValidationReason", false);
+    this.nameValidationHelper.forceValidationReason = false;
     this.performAccountCreation();
   }
 }

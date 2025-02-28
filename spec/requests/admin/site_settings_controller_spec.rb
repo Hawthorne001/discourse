@@ -21,23 +21,12 @@ RSpec.describe Admin::SiteSettingsController do
         expect(locale.length).to eq(1)
       end
 
-      describe "the filter_names param" do
-        it "only returns settings that are specified in the filter_names param" do
-          get "/admin/site_settings.json",
-              params: {
-                filter_names: %w[title site_description notification_email],
-              }
-
-          expect(response.status).to eq(200)
-
-          json = response.parsed_body
-          expect(json["site_settings"].size).to eq(3)
-          expect(json["site_settings"].map { |s| s["setting"] }).to contain_exactly(
-            "title",
-            "site_description",
-            "notification_email",
-          )
-        end
+      it "does not return hidden site settings" do
+        get "/admin/site_settings.json"
+        expect(response.status).to eq(200)
+        expect(
+          response.parsed_body["site_settings"].find { |s| s["setting"] == "max_category_nesting" },
+        ).to be_nil
       end
     end
 
@@ -247,13 +236,12 @@ RSpec.describe Admin::SiteSettingsController do
       end
 
       it "works for deprecated settings" do
-        put "/admin/site_settings/search_tokenize_chinese_japanese_korean.json",
-            params: {
-              search_tokenize_chinese_japanese_korean: true,
-            }
+        stub_deprecated_settings!(override: true) do
+          put "/admin/site_settings/old_one.json", params: { old_one: true }
 
-        expect(response.status).to eq(200)
-        expect(SiteSetting.search_tokenize_chinese).to eq(true)
+          expect(response.status).to eq(200)
+          expect(SiteSetting.new_one).to eq(true)
+        end
       end
 
       it "throws an error when the parameter is not a configurable site setting" do
@@ -643,6 +631,28 @@ RSpec.describe Admin::SiteSettingsController do
 
         expect(SiteSetting.max_category_nesting).to eq(3)
         expect(response.status).to eq(422)
+        expect(response.parsed_body["errors"]).to include(
+          I18n.t(
+            "errors.site_settings.site_settings_are_hidden",
+            setting_names: "max_category_nesting",
+          ),
+        )
+      end
+
+      it "does not allow changing of globally shadowed settings" do
+        SiteSetting.max_category_nesting = 3
+        SiteSetting.stubs(:shadowed_settings).returns(Set.new([:max_category_nesting]))
+
+        put "/admin/site_settings/max_category_nesting.json", params: { max_category_nesting: 2 }
+
+        expect(SiteSetting.max_category_nesting).to eq(3)
+        expect(response.status).to eq(422)
+        expect(response.parsed_body["errors"]).to include(
+          I18n.t(
+            "errors.site_settings.site_settings_are_shadowed_globally",
+            setting_names: "max_category_nesting",
+          ),
+        )
       end
 
       context "with an plugin" do

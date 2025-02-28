@@ -7,7 +7,8 @@
 be:
   js:
     discourse_automation:
-      create: стварыць
+      back: Назад
+      edit: рэдагаваць
       fields:
         user:
           label: карыстальнік
@@ -40,10 +41,14 @@ be:
               label: Номер тэмы
         post_created_edited:
           fields:
+            restricted_tags:
+              label: тэгі
             restricted_category:
               label: катэгорыя
             restricted_group:
               label: група
+            restricted_groups:
+              label: групы
           created: створаны
         category_created_edited:
           fields:
@@ -118,5 +123,7 @@ be:
             label: Трыггер старту
           version:
             label: версія
+          status:
+            label: Статус
           disabled:
             label: Адключана

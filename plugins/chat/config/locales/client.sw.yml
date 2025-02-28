@@ -62,6 +62,7 @@ sw:
         tabs:
           members: Wanachama
           settings: Mipangilio
+        remove_member: "Ondoa"
       new_message_modal:
         filter: "Chuja"
       direct_message_creator:
@@ -130,6 +131,8 @@ sw:
             title: "Kawaida"
           tracking:
             title: "Fuatilia"
+          watching:
+            title: "Angalia"
       draft_channel_screen:
         header: "Ujumbe Mpya"
         cancel: "Ghairi"

@@ -27,14 +27,14 @@ describe "Search", type: :system do
       expect(search_page).to have_search_result
       expect(search_page.heading_text).not_to eq("Search")
 
-      search_page.click_home_logo
+      click_logo
       expect(search_page).to be_not_active
 
       page.go_back
       # ensure results are still there when using browser's history
       expect(search_page).to have_search_result
 
-      search_page.click_home_logo
+      click_logo
       search_page.click_search_icon
 
       expect(search_page).to have_no_search_result
@@ -103,7 +103,6 @@ describe "Search", type: :system do
       search_page.type_in_search_menu("test")
       search_page.click_search_menu_link
       expect(search_page).to have_topic_title_for_first_search_result(topic.title)
-
       search_page.click_first_topic
       search_page.click_search_icon
       expect(search_page).to have_topic_title_for_first_search_result(topic.title)
@@ -127,6 +126,39 @@ describe "Search", type: :system do
       expect(log.term).to eq("test")
       expect(log.search_result_id).to eq(topic.first_post.id)
       expect(log.search_type).to eq(SearchLog.search_types[:header])
+    end
+
+    describe "with search icon in header" do
+      before { SiteSetting.search_experience = "search_icon" }
+
+      it "displays the correct search mode" do
+        visit("/")
+        expect(search_page).to have_search_icon
+        expect(search_page).to have_no_search_field
+      end
+    end
+
+    describe "with search field in header" do
+      before { SiteSetting.search_experience = "search_field" }
+
+      it "displays the correct search mode" do
+        visit("/")
+        expect(search_page).to have_search_field
+        expect(search_page).to have_no_search_icon
+      end
+
+      it "switches to search icon when header is minimized" do
+        5.times { Fabricate(:post, topic: topic) }
+        visit("/t/#{topic.id}")
+
+        expect(search_page).to have_no_search_icon
+
+        find(".timeline-date-wrapper:last-child a").click
+        expect(search_page).to have_search_icon
+
+        find(".timeline-date-wrapper:first-child a").click
+        expect(search_page).to have_no_search_icon
+      end
     end
   end
 
